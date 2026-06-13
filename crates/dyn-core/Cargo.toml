@@ -1,0 +1,12 @@
+[package]
+name = "dyn-core"
+description = "First-order dynamical system dx/dt = f(x): expression parser, fixed-point detection, stability classification, and RK4 integration (no dependencies)"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "dyn_core"
+
+[dependencies]

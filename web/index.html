@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一次の力学系ビジュアライザ  dx/dt = f(x)</title>
+<style>
+  :root{
+    --flow-pos:#d1495b; --flow-neg:#2a6f97;
+    --stable:#1b4332; --unstable:#9d0208; --curve:#343a40;
+    --bg:#f6f7f9; --panel:#ffffff; --ink:#1f2933; --muted:#667085;
+    --line:#e2e6ea;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Hiragino Sans","Hiragino Maru Gothic Pro","Yu Gothic",
+                "Segoe UI",system-ui,sans-serif;
+    line-height:1.6;
+  }
+  header{padding:20px 24px 8px;}
+  h1{font-size:20px; margin:0 0 2px;}
+  h1 .eq{font-family:"Latin Modern Math","Cambria Math",Georgia,serif;
+        font-style:italic; color:var(--curve);}
+  .sub{color:var(--muted); font-size:13px; margin:0;}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 16px 40px;}
+
+  .controls{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin:14px 0; box-shadow:0 1px 2px rgba(0,0,0,.03);
+  }
+  .eqrow{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .eqrow label{font-weight:600; white-space:nowrap;}
+  .eqrow .dxdt{font-family:Georgia,serif; font-style:italic; font-size:18px;}
+  #eq{
+    flex:1; min-width:220px; font-size:16px; padding:9px 12px;
+    border:1px solid #cfd4da; border-radius:8px;
+    font-family:"SF Mono",Menlo,Consolas,monospace;
+  }
+  #eq:focus{outline:2px solid #4c6ef5; border-color:#4c6ef5;}
+  button{
+    font:inherit; cursor:pointer; border:1px solid #cfd4da; background:#fff;
+    padding:9px 14px; border-radius:8px; transition:.15s;
+  }
+  button:hover{background:#f1f3f5;}
+  button:disabled{opacity:.5; cursor:default;}
+  .primary{background:#4c6ef5; color:#fff; border-color:#4c6ef5; font-weight:600;}
+  .primary:hover{background:#3b5bdb;}
+
+  .examples{margin-top:10px; display:flex; gap:8px; flex-wrap:wrap; align-items:center;}
+  .examples span{color:var(--muted); font-size:13px;}
+  .chip{font-size:13px; padding:5px 10px; border-radius:20px; background:#eef1f6;
+        border:1px solid #e0e5ee; font-family:"SF Mono",Menlo,monospace;}
+  .chip:hover{background:#e2e8f5;}
+
+  .params{margin-top:12px; display:flex; gap:18px 22px; flex-wrap:wrap; align-items:center;}
+  .params .field{display:flex; align-items:center; gap:6px; font-size:13px; color:#334;}
+  .params input[type=number]{width:64px; padding:5px 7px; border:1px solid #cfd4da;
+        border-radius:6px; font:inherit;}
+  .paramrow{display:none; gap:10px 14px; flex-wrap:wrap; align-items:center; margin-top:10px;}
+  .paramrow.on{display:flex;}
+  .pwrap{display:none; align-items:center; gap:8px; padding:6px 10px;
+        background:#fff7e6; border:1px solid #ffe2a8; border-radius:8px;}
+  .pwrap.on{display:inline-flex;}
+  .pwrap input[type=number]{width:66px; padding:4px 6px; border:1px solid #cfd4da;
+        border-radius:6px; font:inherit; font-size:13px;
+        font-family:"SF Mono",Menlo,Consolas,monospace;}
+  input[type=range]{accent-color:#e8590c;}
+
+  #error{display:none; color:#9d0208; background:#fff0f0; border:1px solid #ffd0d0;
+        padding:8px 12px; border-radius:8px; margin-top:10px; font-size:14px;}
+  #error.on{display:block;}
+
+  .anim{margin-top:12px; display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .anim .speed{display:flex; align-items:center; gap:6px; font-size:13px; color:#334;}
+
+  .plots{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  @media(max-width:860px){.plots{grid-template-columns:1fr;}}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:12px;
+        padding:8px; box-shadow:0 1px 2px rgba(0,0,0,.03);}
+  canvas{width:100%; display:block; border-radius:8px;}
+
+  .legend{display:flex; gap:16px; flex-wrap:wrap; align-items:center;
+        font-size:13px; color:#334; margin:14px 2px 6px;}
+  .legend .it{display:flex; align-items:center; gap:6px;}
+  .dot{width:13px; height:13px; border-radius:50%; display:inline-block;}
+  .dot.st{background:var(--stable);}
+  .dot.un{background:#fff; border:2px solid var(--unstable);}
+  .bar{width:22px; height:4px; border-radius:2px; display:inline-block;}
+
+  #info{margin-top:8px; background:var(--panel); border:1px solid var(--line);
+        border-radius:12px; padding:12px 16px;}
+  #info h3{margin:0 0 6px; font-size:15px;}
+  table{border-collapse:collapse; font-size:14px;}
+  th,td{text-align:left; padding:4px 14px 4px 0;}
+  th{color:var(--muted); font-weight:600;}
+  .tag{padding:1px 8px; border-radius:12px; font-size:12px; font-weight:600;}
+  .tag.st{background:#d8f3e3; color:var(--stable);}
+  .tag.un{background:#ffe1e1; color:var(--unstable);}
+  .tag.semi{background:#fff3cd; color:#8a6d00;}
+  code{font-family:"SF Mono",Menlo,Consolas,monospace; background:#eef1f6;
+        padding:1px 5px; border-radius:4px; font-size:13px;}
+  .hint{color:var(--muted); font-size:12.5px; margin-top:8px;}
+  .badge{font-size:11px; color:#2b6cb0; background:#e7f0ff; border:1px solid #cfe0ff;
+        border-radius:10px; padding:1px 8px; margin-left:8px; vertical-align:middle;}
+  #bifcard{display:none; margin-top:14px;}
+  .bifhead{display:flex; gap:14px; align-items:center; flex-wrap:wrap;
+        margin:2px 6px 6px; font-size:13px; color:#334;}
+  .bifhead .note{color:var(--muted); font-size:12px;}
+  #bifparam{font:inherit; padding:3px 7px; border-radius:6px; border:1px solid #cfd4da;}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap" style="padding-bottom:0;">
+    <h1>一次の力学系ビジュアライザ&nbsp; <span class="eq">dx/dt = f(x)</span>
+        <span class="badge">Rust + WebAssembly</span></h1>
+    <p class="sub">関数 f(x) を入力すると、f(x) のグラフ・相直線（流れの向き）・固定点の安定性・時系列 x(t) を自動で描画します。計算は Rust(WASM) が行います。</p>
+  </div>
+</header>
+
+<div class="wrap">
+  <div class="controls">
+    <div class="eqrow">
+      <label class="dxdt">dx/dt&nbsp;=</label>
+      <input id="eq" value="x*(1 - x)" spellcheck="false"
+             placeholder="例:  x - x^3,   r - x^2,   sin(x),   x*(1-x)">
+      <button class="primary" id="draw">描画</button>
+    </div>
+    <div class="examples">
+      <span>例:</span>
+      <button class="chip" data-eq="-x">-x</button>
+      <button class="chip" data-eq="x*(1 - x)">x(1-x)</button>
+      <button class="chip" data-eq="x - x^3">x - x³</button>
+      <button class="chip" data-eq="r - x^2">r - x²</button>
+      <button class="chip" data-eq="r*x - x^3">rx - x³</button>
+      <button class="chip" data-eq="r*x*(1 - x/q)">rx(1-x/q)</button>
+      <button class="chip" data-eq="p + r*x - x^3">p + rx - x³</button>
+      <button class="chip" data-eq="sin(x)">sin(x)</button>
+      <button class="chip" data-eq="x*(1 - x)*(x - 0.3)">x(1-x)(x-0.3)</button>
+    </div>
+    <div class="params">
+      <div class="field"><label>x 範囲</label>
+        <input type="number" id="xmin" value="-2" step="0.5">
+        <span>〜</span>
+        <input type="number" id="xmax" value="2" step="0.5"></div>
+      <div class="field"><label>時間 t<sub>max</sub></label>
+        <input type="number" id="tmax" value="8" step="1" min="1" max="1000"></div>
+      <div class="field"><label>軌道数</label>
+        <input type="number" id="nic" value="15" step="1" min="2" max="60"></div>
+    </div>
+    <div class="paramrow" id="paramrow">
+      <div id="pwrap" class="pwrap">
+        <label>パラメータ p</label>
+        <input type="range" id="prange" min="-3" max="3" step="0.01" value="0">
+        <input type="number" id="pnum" step="0.1" value="0">
+      </div>
+      <div id="qwrap" class="pwrap">
+        <label>パラメータ q</label>
+        <input type="range" id="qrange" min="-3" max="3" step="0.01" value="1">
+        <input type="number" id="qnum" step="0.1" value="1">
+      </div>
+      <div id="rwrap" class="pwrap">
+        <label>パラメータ r</label>
+        <input type="range" id="rrange" min="-3" max="3" step="0.01" value="0">
+        <input type="number" id="rnum" step="0.1" value="0">
+      </div>
+    </div>
+    <div id="error"></div>
+    <div class="anim">
+      <button id="play">▶ アニメーション再生</button>
+      <button id="reset">⟲ リセット</button>
+      <div class="speed"><label>速さ</label>
+        <input type="range" id="speed" min="0.25" max="4" step="0.25" value="1"
+               style="width:110px;"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="it"><span class="dot st"></span>安定固定点 (f′&lt;0)</div>
+    <div class="it"><span class="dot un"></span>不安定固定点 (f′&gt;0)</div>
+    <div class="it"><span class="bar" style="background:var(--flow-pos)"></span>増加方向の流れ (f&gt;0)</div>
+    <div class="it"><span class="bar" style="background:var(--flow-neg)"></span>減少方向の流れ (f&lt;0)</div>
+  </div>
+
+  <div class="plots">
+    <div class="card"><canvas id="phase"></canvas></div>
+    <div class="card"><canvas id="time"></canvas></div>
+  </div>
+
+  <div class="card" id="bifcard">
+    <div class="bifhead">
+      <strong>分岐図</strong>
+      <span id="bifselwrap">掃引するパラメータ:
+        <select id="bifparam"></select>
+      </span>
+      <span class="note">実線 = 安定 / 破線 = 不安定。縦の点線 = 現在のパラメータ値。</span>
+    </div>
+    <canvas id="bif"></canvas>
+  </div>
+
+  <div id="info"></div>
+
+  <p class="hint">
+    使える記号: 四則演算 <code>+ - * /</code>、べき乗 <code>^</code>、括弧、暗黙の掛け算 <code>x(1-x)</code>。
+    関数: <code>sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 sqrt cbrt abs sign pow(a,b)</code>。
+    定数: <code>pi e</code>。 変数 <code>x</code> に加え、パラメータ <code>p</code> <code>q</code> <code>r</code> を含めると各スライダーが現れ、分岐（固定点の生成・消滅）を観察できます。
+  </p>
+</div>
+
+<script type="module">
+import init, { WasmModel } from "./pkg/dyn_wasm.js";
+
+/* ====== Colors (match the CSS) ====== */
+const C = {
+  flowPos: "#d1495b", flowNeg: "#2a6f97",
+  stable: "#1b4332", unstable: "#9d0208", semi: "#8a6d00",
+  curve: "#343a40",
+};
+
+/* ====== Helpers ====== */
+function viridis(t){
+  t = Math.max(0, Math.min(1, t));
+  const stops = [[68,1,84],[59,82,139],[33,144,140],[93,201,99],[253,231,37]];
+  const s = t*(stops.length-1), i = Math.floor(s), f = s-i;
+  const a = stops[i], b = stops[Math.min(i+1, stops.length-1)];
+  const mix = (x,y)=>Math.round(x+(y-x)*f);
+  return `rgb(${mix(a[0],b[0])},${mix(a[1],b[1])},${mix(a[2],b[2])})`;
+}
+function ticks(min,max,n){
+  const span=max-min; if(span<=0||!isFinite(span)) return [min];
+  const raw=span/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), norm=raw/mag;
+  let step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag;
+  const out=[]; const start=Math.ceil(min/step-1e-9)*step;
+  for(let v=start; v<=max+step*1e-6; v+=step) out.push(Math.abs(v)<step*1e-6?0:v);
+  return out;
+}
+function fmt(v){
+  if(v===0) return "0";
+  const a=Math.abs(v);
+  let s=(a<0.001||a>=10000)? v.toExponential(1) : v.toFixed(a<1?2:(a<10?2:1));
+  return s.replace(/\.?0+$/,"").replace(/\.?0+e/,"e");
+}
+function setupCanvas(cv, cssH){
+  const dpr=window.devicePixelRatio||1;
+  const cssW=cv.parentElement.clientWidth-16;
+  cv.style.height=cssH+"px";
+  cv.width=Math.round(cssW*dpr); cv.height=Math.round(cssH*dpr);
+  const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+  return {ctx, w:cssW, h:cssH};
+}
+function arrow(ctx,x1,y1,x2,y2,col,lw){
+  ctx.strokeStyle=col; ctx.fillStyle=col; ctx.lineWidth=lw;
+  ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  const ang=Math.atan2(y2-y1,x2-x1), hl=7+lw;
+  ctx.beginPath(); ctx.moveTo(x2,y2);
+  ctx.lineTo(x2-hl*Math.cos(ang-0.4), y2-hl*Math.sin(ang-0.4));
+  ctx.lineTo(x2-hl*Math.cos(ang+0.4), y2-hl*Math.sin(ang+0.4));
+  ctx.closePath(); ctx.fill();
+}
+
+/* ====== State ====== */
+let MODEL=null;            // { wm, eq, xmin, xmax, tmax, dt, nTraj, tlen, usesR,
+                           //   fmin, fmax, fxs, fys, fps[], flow[], traj }
+let anim={on:false, t:0, raf:0, last:0};
+let WASM_READY=false;
+
+const $ = id => document.getElementById(id);
+
+function showError(msg){
+  const el=$("error"); el.textContent=msg; el.classList.add("on");
+}
+function clearError(){ $("error").classList.remove("on"); }
+
+/* ====== Parameters (p, q, r) ====== */
+const PNAMES = ["p", "q", "r"];
+const PRANGE = ["prange", "qrange", "rrange"];  // sliders (±3)
+const PNUM   = ["pnum", "qnum", "rnum"];        // number inputs (source of truth)
+const PWRAP  = ["pwrap", "qwrap", "rwrap"];
+const SLIDER_MIN=-3, SLIDER_MAX=3;
+// the number inputs are the source of truth for parameter values
+function paramValues(){
+  return PNUM.map(id => { const v=parseFloat($(id).value); return Number.isFinite(v)?v:0; });
+}
+
+/* ====== Build the model via WASM ====== */
+function buildModel(){
+  if(!WASM_READY) return null;
+  const expr=$("eq").value.trim();
+  const xmin=parseFloat($("xmin").value), xmax=parseFloat($("xmax").value);
+  const tmax=Math.min(1000,Math.max(1,parseFloat($("tmax").value)||8));
+  const nic=Math.max(2,Math.min(60,parseInt($("nic").value)||15));
+  if(!(xmax>xmin)){ showError("x 範囲が不正です (min < max)."); return null; }
+  const pv=paramValues();   // [p, q, r]
+
+  let wm;
+  try{ wm = WasmModel.build(expr, pv[0], pv[1], pv[2], xmin, xmax, tmax, nic); }
+  catch(e){ showError("式を解釈できません: "+e); return null; }
+  clearError();
+
+  // free the previous model
+  if(MODEL && MODEL.wm) MODEL.wm.free();
+
+  // toggle visibility of each parameter input
+  const used=[wm.uses_p, wm.uses_q, wm.uses_r];
+  for(let i=0;i<3;i++) $(PWRAP[i]).classList.toggle("on", used[i]);
+  // show the parameter row only when some parameter is used (always on its own line)
+  $("paramrow").classList.toggle("on", used.some(Boolean));
+
+  // samples of f(x)
+  const NS=600;
+  const fys=wm.f_samples(NS);
+  const fxs=new Float64Array(NS+1);
+  for(let i=0;i<=NS;i++) fxs[i]=xmin+(xmax-xmin)*i/NS;
+
+  // fixed points [x, slope, kind, ...]
+  const fpFlat=wm.fixed_points(); const fps=[];
+  for(let i=0;i<fpFlat.length;i+=3) fps.push({x:fpFlat[i], slope:fpFlat[i+1], kind:fpFlat[i+2]});
+
+  // flow [xm, sign, ...]
+  const flFlat=wm.flow_segments(); const flow=[];
+  for(let i=0;i<flFlat.length;i+=2) flow.push({xm:flFlat[i], sign:flFlat[i+1]});
+
+  return {
+    wm, eq:expr, params:pv, used, xmin, xmax, tmax,
+    dt:wm.dt, nTraj:wm.n_traj, tlen:wm.traj_len,
+    fmin:wm.fmin, fmax:wm.fmax, fxs, fys, fps, flow,
+    traj: wm.trajectories(),
+  };
+}
+
+function fpColor(kind){ return kind===0?C.stable : kind===1?C.unstable : C.semi; }
+
+/* ====== Left panel: f(x) + phase line ====== */
+function drawPhase(m, animX){
+  const {ctx,w,h}=setupCanvas($("phase"),360);
+  ctx.clearRect(0,0,w,h);
+  const M={l:54,r:16,t:26,b:42};
+  const X=v=>M.l+(v-m.xmin)/(m.xmax-m.xmin)*(w-M.l-M.r);
+  const Y=v=>h-M.b-(v-m.fmin)/(m.fmax-m.fmin)*(h-M.t-M.b);
+  const y0=Y(0);
+
+  ctx.font="11px sans-serif"; ctx.lineWidth=1;
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(const tx of ticks(m.xmin,m.xmax,7)){
+    const px=X(tx);
+    ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(px,M.t); ctx.lineTo(px,h-M.b); ctx.stroke();
+    ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(tx), px, h-M.b+5);
+  }
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(const ty of ticks(m.fmin,m.fmax,5)){
+    const py=Y(ty);
+    ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(M.l,py); ctx.lineTo(w-M.r,py); ctx.stroke();
+    ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(ty), M.l-6, py);
+  }
+
+  // clip to the data area (cut fill/curve that overflows the frame)
+  ctx.save();
+  ctx.beginPath(); ctx.rect(M.l, M.t, w-M.l-M.r, h-M.t-M.b); ctx.clip();
+
+  // fill: f>0 vs f<0
+  for(const sgn of [1,-1]){
+    ctx.beginPath(); let open=false;
+    for(let i=0;i<m.fxs.length;i++){
+      const v=m.fys[i], inside=(sgn>0? v>=0 : v<=0);
+      if(inside && isFinite(v)){
+        if(!open){ ctx.moveTo(X(m.fxs[i]),y0); open=true; }
+        ctx.lineTo(X(m.fxs[i]),Y(v));
+      } else if(open){ ctx.lineTo(X(m.fxs[i-1]),y0); ctx.closePath(); open=false; }
+    }
+    if(open){ ctx.lineTo(X(m.fxs[m.fxs.length-1]),y0); ctx.closePath(); }
+    ctx.fillStyle=(sgn>0?C.flowPos:C.flowNeg); ctx.globalAlpha=0.15; ctx.fill(); ctx.globalAlpha=1;
+  }
+
+  // phase line (f=0)
+  ctx.strokeStyle="#9aa3ad"; ctx.lineWidth=1.4;
+  ctx.beginPath(); ctx.moveTo(M.l,y0); ctx.lineTo(w-M.r,y0); ctx.stroke();
+
+  // f(x) curve
+  ctx.strokeStyle=C.curve; ctx.lineWidth=2.2; ctx.beginPath();
+  let started=false;
+  for(let i=0;i<m.fxs.length;i++){
+    const v=m.fys[i];
+    if(!isFinite(v)||Math.abs(v)>1e6){ started=false; continue; }
+    const px=X(m.fxs[i]), py=Y(Math.max(m.fmin,Math.min(m.fmax,v)));
+    if(!started){ ctx.moveTo(px,py); started=true; } else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+  ctx.restore();
+
+  // flow arrows
+  for(const seg of m.flow){
+    const cx=X(seg.xm);
+    const span=Math.min(26, (w-M.l-M.r)*0.08);
+    if(seg.sign>0) arrow(ctx,cx-span,y0,cx+span,y0,C.flowPos,2.2);
+    else           arrow(ctx,cx+span,y0,cx-span,y0,C.flowNeg,2.2);
+  }
+
+  // fixed points
+  for(const p of m.fps){
+    if(p.x<m.xmin||p.x>m.xmax) continue;
+    const px=X(p.x);
+    ctx.beginPath(); ctx.arc(px,y0,6,0,7);
+    if(p.kind===0){ ctx.fillStyle=C.stable; ctx.fill(); }
+    else if(p.kind===1){ ctx.fillStyle="#fff"; ctx.fill(); ctx.lineWidth=2.4; ctx.strokeStyle=C.unstable; ctx.stroke(); }
+    else { ctx.fillStyle="#ffd24d"; ctx.fill(); ctx.lineWidth=2.4; ctx.strokeStyle=C.semi; ctx.stroke(); }
+  }
+
+  // particles
+  if(animX){
+    for(const xv of animX){
+      if(xv<m.xmin-0.05||xv>m.xmax+0.05) continue;
+      const v=m.wm.f_at(xv);
+      ctx.beginPath(); ctx.arc(X(xv),y0,5.5,0,7);
+      ctx.fillStyle=(v>=0?C.flowPos:C.flowNeg); ctx.fill();
+      ctx.lineWidth=1.2; ctx.strokeStyle="#fff"; ctx.stroke();
+    }
+  }
+
+  // labels
+  ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText("x", w-M.r, h-2);
+  ctx.save(); ctx.translate(13,M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
+  ctx.textBaseline="top"; ctx.fillText("f(x) = dx/dt",0,0); ctx.restore();
+
+  // phase-line note: place it in the corner opposite the f=0 line with a white
+  // background so it doesn't overlap the line/arrows
+  {
+    const txt="← 相直線（流れの向き）→";  // user-facing label: keep Japanese
+    ctx.font="11px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle";
+    const tw=ctx.measureText(txt).width, lx=M.l+6;
+    const mid=(M.t + (h-M.b))/2;
+    const ly=(y0<mid) ? (h-M.b-10) : (M.t+10); // corner opposite the f=0 line
+    ctx.fillStyle="rgba(255,255,255,0.85)";
+    ctx.fillRect(lx-3, ly-8, tw+6, 16);
+    ctx.fillStyle="#9aa3ad";
+    ctx.fillText(txt, lx, ly);
+  }
+}
+
+/* ====== Right panel: time series ====== */
+function drawTime(m, animT){
+  const {ctx,w,h}=setupCanvas($("time"),360);
+  ctx.clearRect(0,0,w,h);
+  const M={l:54,r:16,t:26,b:42};
+  const X=v=>M.l+v/m.tmax*(w-M.l-M.r);
+  const Y=v=>h-M.b-(v-m.xmin)/(m.xmax-m.xmin)*(h-M.t-M.b);
+
+  ctx.font="11px sans-serif"; ctx.lineWidth=1;
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(const tt of ticks(0,m.tmax,7)){
+    const px=X(tt);
+    ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(px,M.t); ctx.lineTo(px,h-M.b); ctx.stroke();
+    ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(tt),px,h-M.b+5);
+  }
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(const ty of ticks(m.xmin,m.xmax,5)){
+    const py=Y(ty);
+    ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(M.l,py); ctx.lineTo(w-M.r,py); ctx.stroke();
+    ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(ty),M.l-6,py);
+  }
+
+  // horizontal lines at the fixed points
+  for(const p of m.fps){
+    if(p.x<m.xmin||p.x>m.xmax) continue;
+    ctx.strokeStyle=fpColor(p.kind); ctx.globalAlpha=0.55; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
+    ctx.beginPath(); ctx.moveTo(M.l,Y(p.x)); ctx.lineTo(w-M.r,Y(p.x)); ctx.stroke();
+    ctx.setLineDash([]); ctx.globalAlpha=1;
+  }
+
+  // trajectories (clip to the plot area: don't draw what diverges off-frame)
+  const nmax = animT==null ? m.tlen-1 : Math.min(m.tlen-1, Math.round(animT/m.dt));
+  ctx.save();
+  ctx.beginPath(); ctx.rect(M.l, M.t, w-M.l-M.r, h-M.t-M.b); ctx.clip();
+  ctx.lineWidth=1.8;
+  for(let k=0;k<m.nTraj;k++){
+    const col=viridis(k/Math.max(1,m.nTraj-1));
+    ctx.strokeStyle=col; ctx.beginPath();
+    for(let i=0;i<=nmax;i++){
+      const px=X(i*m.dt), py=Y(m.traj[k*m.tlen+i]);
+      if(i===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    if(animT!=null){
+      ctx.beginPath(); ctx.arc(X(nmax*m.dt),Y(m.traj[k*m.tlen+nmax]),3.5,0,7);
+      ctx.fillStyle=col; ctx.fill();
+    }
+  }
+  ctx.restore();
+  // time cursor
+  if(animT!=null){
+    const px=X(nmax*m.dt);
+    ctx.strokeStyle="#adb5bd"; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(px,M.t); ctx.lineTo(px,h-M.b); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText("時間 t",w-M.r,h-2);
+  ctx.save(); ctx.translate(13,M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
+  ctx.textBaseline="top"; ctx.fillText("x(t)",0,0); ctx.restore();
+}
+
+/* ====== Fixed-point table ====== */
+function renderInfo(m){
+  const el=$("info");
+  let rows=m.fps.map(p=>{
+    const tag = p.kind===0?`<span class="tag st">安定</span>`
+              : p.kind===1?`<span class="tag un">不安定</span>`
+              : `<span class="tag semi">半安定</span>`;
+    return `<tr><td><code>x* = ${fmt(p.x)}</code></td><td>${tag}</td>
+            <td>f′(x*) = ${p.slope.toFixed(3)}</td></tr>`;
+  }).join("");
+  if(!m.fps.length) rows=`<tr><td colspan="3" style="color:#8a93a0">
+      この範囲に固定点はありません（流れは一方向）。</td></tr>`;
+  const cnt={st:0,un:0,semi:0};
+  m.fps.forEach(p=> cnt[p.kind===0?"st":p.kind===1?"un":"semi"]++);
+  const shown=PNAMES.map((nm,i)=> m.used[i]?`${nm} = ${m.params[i].toFixed(2)}`:null).filter(Boolean);
+  const rtxt = shown.length ? `（現在 ${shown.join(", ")}）` : "";
+  el.innerHTML=`<h3>固定点と安定性 ${rtxt}</h3>
+    <table><thead><tr><th>位置</th><th>種類</th><th>線形化</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <div class="hint">安定 ${cnt.st} 個 / 不安定 ${cnt.un} 個${cnt.semi?` / 半安定 ${cnt.semi} 個`:""}。
+    安定固定点は近くの初期値を引き寄せ、不安定固定点は分水嶺（引き込み領域の境界）になります。</div>`;
+}
+
+/* ====== Bifurcation diagram (when parameters exist) ====== */
+const BIF_VMIN=-3, BIF_VMAX=3;
+function drawBif(m, idx){
+  const {ctx,w,h}=setupCanvas($("bif"), 300);
+  ctx.clearRect(0,0,w,h);
+  const M={l:54,r:16,t:14,b:42};
+  const X=v=>M.l+(v-BIF_VMIN)/(BIF_VMAX-BIF_VMIN)*(w-M.l-M.r);
+  const Y=x=>h-M.b-(x-m.xmin)/(m.xmax-m.xmin)*(h-M.t-M.b);
+
+  ctx.font="11px sans-serif"; ctx.lineWidth=1;
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(const tx of ticks(BIF_VMIN,BIF_VMAX,9)){
+    const px=X(tx);
+    ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(px,M.t); ctx.lineTo(px,h-M.b); ctx.stroke();
+    ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(tx), px, h-M.b+5);
+  }
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(const ty of ticks(m.xmin,m.xmax,5)){
+    const py=Y(ty);
+    ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(M.l,py); ctx.lineTo(w-M.r,py); ctx.stroke();
+    ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(ty), M.l-6, py);
+  }
+
+  // get fixed points as [v, x*, kind] and group them into columns by v
+  const data=m.wm.bifurcation(idx, BIF_VMIN, BIF_VMAX, 240); // [v,x*,kind,...]
+  const cols=[];
+  for(let i=0;i<data.length;i+=3){
+    const v=data[i];
+    if(!cols.length || cols[cols.length-1].v!==v) cols.push({v, roots:[]});
+    cols[cols.length-1].roots.push({x:data[i+1], kind:data[i+2]});
+  }
+
+  // branch tracking: connect same-stability fixed points by nearest x into continuous branches
+  const thresh=(m.xmax-m.xmin)*0.05;
+  const branches=[]; let active=[];
+  for(const col of cols){
+    const next=[], usedActive=new Set();
+    for(const root of col.roots){
+      let best=-1, bestD=thresh;
+      for(let bi=0;bi<active.length;bi++){
+        if(usedActive.has(bi) || active[bi].kind!==root.kind) continue;
+        const d=Math.abs(active[bi].lastX-root.x);
+        if(d<bestD){ bestD=d; best=bi; }
+      }
+      if(best>=0){
+        const b=active[best]; usedActive.add(best);
+        b.pts.push({v:col.v,x:root.x}); b.lastX=root.x; next.push(b);
+      } else {
+        next.push({kind:root.kind, lastX:root.x, pts:[{v:col.v,x:root.x}]});
+      }
+    }
+    for(let bi=0;bi<active.length;bi++) if(!usedActive.has(bi)) branches.push(active[bi]);
+    active=next;
+  }
+  branches.push(...active);
+
+  // draw branches: stable=solid / unstable=dashed / semi-stable=dotted
+  ctx.save();
+  ctx.beginPath(); ctx.rect(M.l, M.t, w-M.l-M.r, h-M.t-M.b); ctx.clip();
+  ctx.lineJoin="round";
+  for(const b of branches){
+    const col = b.kind===0?C.stable : b.kind===1?C.unstable : C.semi;
+    ctx.strokeStyle=col; ctx.fillStyle=col;
+    ctx.lineWidth = b.kind===0?2.4:2.0;
+    ctx.setLineDash(b.kind===0? [] : b.kind===1? [7,4] : [2,3]);
+    if(b.pts.length===1){
+      ctx.setLineDash([]);
+      ctx.beginPath(); ctx.arc(X(b.pts[0].v),Y(b.pts[0].x),2,0,7); ctx.fill();
+      continue;
+    }
+    ctx.beginPath();
+    b.pts.forEach((p,j)=>{ const px=X(p.v),py=Y(p.x); j?ctx.lineTo(px,py):ctx.moveTo(px,py); });
+    ctx.stroke();
+  }
+  ctx.setLineDash([]); ctx.restore();
+
+  // vertical line at the current parameter value
+  const cur=m.params[idx];
+  if(cur>=BIF_VMIN && cur<=BIF_VMAX){
+    const px=X(cur);
+    ctx.strokeStyle="#e8590c"; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+    ctx.beginPath(); ctx.moveTo(px,M.t); ctx.lineTo(px,h-M.b); ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // labels
+  ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
+  ctx.textAlign="center"; ctx.textBaseline="bottom";
+  ctx.fillText("パラメータ "+PNAMES[idx], (M.l+w-M.r)/2, h-2);
+  ctx.save(); ctx.translate(13,M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
+  ctx.textBaseline="top"; ctx.textAlign="center"; ctx.fillText("固定点 x*",0,0); ctx.restore();
+}
+function bifIndex(m){
+  const usedIdx=[0,1,2].filter(i=>m.used[i]);
+  let idx=parseInt($("bifparam").value);
+  return usedIdx.includes(idx)?idx:usedIdx[0];
+}
+function updateBif(m){
+  const usedIdx=[0,1,2].filter(i=>m.used[i]);
+  $("bifcard").style.display = usedIdx.length ? "block" : "none";
+  if(!usedIdx.length) return;
+  const sel=$("bifparam"); const prev=parseInt(sel.value);
+  sel.innerHTML=usedIdx.map(i=>`<option value="${i}">${PNAMES[i]}</option>`).join("");
+  const idx = usedIdx.includes(prev)?prev:usedIdx[0];
+  sel.value=String(idx);
+  $("bifselwrap").style.display = usedIdx.length>1 ? "inline" : "none";
+  drawBif(m, idx);
+}
+
+/* ====== Rendering / animation ====== */
+function currentParticles(m){
+  const idx=Math.min(m.tlen-1, Math.round(anim.t/m.dt));
+  const out=[];
+  for(let k=0;k<m.nTraj;k++) out.push(m.traj[k*m.tlen+idx]);
+  return out;
+}
+function render(){
+  const m=buildModel();
+  if(!m){ MODEL=null; return; }
+  MODEL=m;
+  stopAnim();
+  // initial particles (t=0)
+  const init=[]; for(let k=0;k<m.nTraj;k++) init.push(m.traj[k*m.tlen]);
+  drawPhase(m, init);
+  drawTime(m, null);
+  renderInfo(m);
+  updateBif(m);
+}
+// Coalesce continuous input (e.g. slider drags) into one render per animation
+// frame so events don't pile up and freeze the UI.
+let renderPending=false;
+function scheduleRender(){
+  if(renderPending) return;
+  renderPending=true;
+  requestAnimationFrame(()=>{ renderPending=false; render(); });
+}
+function stopAnim(){
+  anim.on=false; cancelAnimationFrame(anim.raf);
+  $("play").textContent="▶ アニメーション再生";
+}
+function startAnim(){
+  if(!MODEL) return;
+  anim.on=true; anim.t=0; anim.last=performance.now();
+  $("play").textContent="❚❚ 一時停止";
+  const step=(now)=>{
+    if(!anim.on) return;
+    const speed=parseFloat($("speed").value);
+    anim.t += (now-anim.last)/1000*speed; anim.last=now;
+    if(anim.t>=MODEL.tmax) anim.t=MODEL.tmax;
+    drawPhase(MODEL, currentParticles(MODEL));
+    drawTime(MODEL, anim.t);
+    if(anim.t>=MODEL.tmax){ stopAnim(); return; }
+    anim.raf=requestAnimationFrame(step);
+  };
+  anim.raf=requestAnimationFrame(step);
+}
+
+/* ====== Events ====== */
+$("draw").addEventListener("click",render);
+$("eq").addEventListener("keydown",e=>{ if(e.key==="Enter") render(); });
+document.querySelectorAll(".chip").forEach(b=>b.addEventListener("click",()=>{
+  $("eq").value=b.dataset.eq; render();
+}));
+["xmin","xmax","tmax","nic"].forEach(id=>$(id).addEventListener("change",render));
+// slider -> number input (throttle continuous input via scheduleRender)
+PRANGE.forEach((id,i)=>$(id).addEventListener("input",()=>{
+  $(PNUM[i]).value=$(id).value; scheduleRender();
+}));
+// number input -> slider (slider clamps at its ends; the number input is the source of truth)
+PNUM.forEach((id,i)=>$(id).addEventListener("input",()=>{
+  const v=parseFloat($(id).value);
+  if(Number.isFinite(v)) $(PRANGE[i]).value=Math.max(SLIDER_MIN,Math.min(SLIDER_MAX,v));
+  scheduleRender();
+}));
+$("play").addEventListener("click",()=>{ if(anim.on) stopAnim(); else startAnim(); });
+$("reset").addEventListener("click",render);
+$("bifparam").addEventListener("change",()=>{ if(MODEL) drawBif(MODEL, bifIndex(MODEL)); });
+window.addEventListener("resize",()=>{
+  if(MODEL && !anim.on){
+    const init=[]; for(let k=0;k<MODEL.nTraj;k++) init.push(MODEL.traj[k*MODEL.tlen]);
+    drawPhase(MODEL, init); drawTime(MODEL, null);
+    if(MODEL.used.some(Boolean)) drawBif(MODEL, bifIndex(MODEL));
+  }
+});
+
+/* ====== WASM initialization ====== */
+init()
+  .then(()=>{ WASM_READY=true; render(); })
+  .catch(e=>showError("WASM の初期化に失敗しました: "+e));
+</script>
+</body>
+</html>

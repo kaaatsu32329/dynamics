@@ -1,0 +1,25 @@
+[package]
+name = "dyn-cli"
+description = "CLI that renders the first-order system dx/dt = f(x) from an equation to a PNG/GIF figure"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "dyn-cli"
+path = "src/main.rs"
+
+[dependencies]
+dyn-core = { path = "../dyn-core" }
+# The default `ttf`/font-kit backend breaks on recent nightly (pathfinder_simd),
+# so use the pure-Rust `ab_glyph` font backend instead.
+plotters = { version = "0.3", default-features = false, features = [
+    "bitmap_backend",
+    "bitmap_encoder",
+    "bitmap_gif",
+    "ab_glyph",
+    "line_series",
+    "area_series",
+    "point_series",
+] }

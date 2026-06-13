@@ -1,0 +1,77 @@
+name: Deploy web (WASM) to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Permissions required to deploy to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow only one concurrent run (cancel an in-progress deploy)
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust (stable + wasm target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+
+      # Verify the core numeric logic (skip the deploy if it fails)
+      - name: Test dyn-core
+        run: cargo test -p dyn-core --locked
+
+      - name: Build dyn-wasm (release, wasm32)
+        run: cargo build --release --locked --target wasm32-unknown-unknown -p dyn-wasm
+
+      # Use a CLI matching the wasm-bindgen crate version
+      - name: Resolve wasm-bindgen version
+        id: wb
+        run: |
+          ver=$(awk '/name = "wasm-bindgen"/{f=1} f&&/version = /{gsub(/[" ]/,"",$3); print $3; exit}' Cargo.lock)
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+          echo "wasm-bindgen = $ver"
+
+      - name: Install wasm-bindgen-cli
+        uses: taiki-e/install-action@v2
+        with:
+          tool: wasm-bindgen-cli@${{ steps.wb.outputs.version }}
+
+      - name: Generate JS glue into web/pkg
+        run: |
+          wasm-bindgen --target web --no-typescript --out-dir web/pkg \
+            target/wasm32-unknown-unknown/release/dyn_wasm.wasm
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true # auto-enable Pages even if not yet configured
+
+      - name: Upload site artifact (web/)
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

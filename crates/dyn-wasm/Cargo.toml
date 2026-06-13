@@ -1,0 +1,15 @@
+[package]
+name = "dyn-wasm"
+description = "WebAssembly bridge exposing dyn-core (for the browser)"
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[lib]
+name = "dyn_wasm"
+crate-type = ["cdylib"]
+
+[dependencies]
+dyn-core = { path = "../dyn-core" }
+wasm-bindgen = "0.2"

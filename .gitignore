@@ -1,0 +1,5 @@
+/target
+**/*.rs.bk
+.claude
+# Generated artifacts (produced by build-web.sh / CI; not tracked in VCS)
+/web/pkg/
