@@ -74,33 +74,6 @@ cargo run -p dyn-cli -- "x*(1-x)" --gif -o logistic.gif --frames 120
 主なオプション: `--xmin/--xmax`（x 範囲）, `--tmax`（積分時間）, `--n`（軌道本数）,
 `--p`/`--q`/`--r`（パラメータ）, `--size WxH`, `--gif`, `--frames`。`-h` で一覧。
 
-## デプロイ（GitHub Pages）
-
-`.github/workflows/deploy.yml` が、`main` への push ごとに
-
-1. `dyn-core` をテスト
-2. `dyn-wasm` を `wasm32-unknown-unknown` でビルド
-3. `Cargo.lock` と同じ版の `wasm-bindgen-cli` で JS グルーを生成（`web/pkg`）
-4. `web/` を **GitHub Pages** に公開
-
-します。初回 push 時に Pages を自動で有効化（`configure-pages` の `enablement`）。
-HTML/WASM はすべて相対パスなので、プロジェクトページ
-`https://<ユーザー名>.github.io/<リポジトリ名>/` でそのまま動きます。
-
-初回手順:
-
-```sh
-git add -A                 # Cargo.lock と .github/ と web/ を必ず含める
-git commit -m "first-order dynamics visualizer"
-git branch -M main
-git remote add origin https://github.com/<ユーザー名>/<リポジトリ名>.git
-git push -u origin main
-```
-
-push 後、リポジトリの **Actions** タブで進行を確認できます。完了すると Pages の URL に公開されます
-（Settings → Pages にも表示）。`enablement` が組織設定で弾かれる場合だけ、Settings → Pages →
-Source を「GitHub Actions」に手動設定してください。
-
 ## 数式の記法
 
 - 演算: `+ - * /`、べき乗 `^`、括弧、**暗黙の掛け算** `2x` / `x(1-x)`
