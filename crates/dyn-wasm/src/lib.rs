@@ -142,6 +142,40 @@ impl WasmModel {
         self.m.f(x)
     }
 
+    /// Fixed points searched over a window extended far beyond the view
+    /// ([xmin - 50*span, xmax + 50*span]), capped to the `max_count` nearest the
+    /// view center. Flattened as `[x, slope, kind, in_range, ...]`
+    /// (kind: 0=stable, 1=unstable, 2=semi-stable; in_range: 1 if within [xmin, xmax]).
+    pub fn fixed_points_extended(&self, max_count: usize) -> Vec<f64> {
+        let p = &self.m.params;
+        let span = (p.xmax - p.xmin).max(1e-9);
+        let dx = span / 2000.0; // same resolution as in-view
+        let lo = p.xmin - 50.0 * span;
+        let hi = p.xmax + 50.0 * span;
+        let n = (((hi - lo) / dx).ceil() as usize).clamp(2000, 300_000);
+        let center = 0.5 * (p.xmin + p.xmax);
+        let mut roots = dyn_core::find_roots(&self.m.expr, &p.vals, lo, hi, n);
+        if roots.len() > max_count {
+            // keep the ones nearest the view center
+            roots.sort_by(|a, b| (a - center).abs().partial_cmp(&(b - center).abs()).unwrap());
+            roots.truncate(max_count);
+        }
+        roots.sort_by(|a, b| a.partial_cmp(b).unwrap());
+        let mut out = Vec::with_capacity(roots.len() * 4);
+        for x in roots {
+            let fp = dyn_core::classify(&self.m.expr, &p.vals, x);
+            out.push(fp.x);
+            out.push(fp.slope);
+            out.push(match fp.stability {
+                Stability::Stable => 0.0,
+                Stability::Unstable => 1.0,
+                Stability::SemiStable => 2.0,
+            });
+            out.push(if x >= p.xmin && x <= p.xmax { 1.0 } else { 0.0 });
+        }
+        out
+    }
+
     /// Bifurcation-diagram data. Sweeps parameter `index` over [vmin, vmax] in n steps and
     /// returns the fixed points at each value, flattened as `[v, x*, kind, ...]`
     /// (kind: 0=stable, 1=unstable, 2=semi-stable). Non-swept parameters stay at their
@@ -161,7 +195,11 @@ impl WasmModel {
             if let Some(slot) = vals.get_mut(index) {
                 *slot = v;
             }
-            for x in dyn_core::find_roots(&self.m.expr, &vals, base.xmin, base.xmax, ROOT_SAMPLES) {
+            let roots = dyn_core::find_roots(&self.m.expr, &vals, base.xmin, base.xmax, ROOT_SAMPLES);
+            if roots.len() > 60 {
+                continue; // degenerate column (continuum of fixed points, e.g. f ≡ 0)
+            }
+            for x in roots {
                 let fp = dyn_core::classify(&self.m.expr, &vals, x);
                 out.push(v);
                 out.push(fp.x);

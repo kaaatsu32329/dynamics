@@ -1,19 +1,18 @@
-# 一次の力学系ビジュアライザ (Rust)
+# 力学系ビジュアライザ（1 次元・2 次元 / Rust + WebAssembly）
 
-一次（1 次元）の自励系
+自励系の挙動をブラウザで可視化するワークスペース。ページ上部のタブで **1 次元** と **2 次元** を切り替えられる。
 
-```
-dx/dt = f(x)
-```
-
-の挙動を可視化する Rust 製ワークスペース。任意の関数 `f(x)` を文字列で与えると、
+**1 次元 `dx/dt = f(x)`** — 任意の関数 `f(x)` を文字列で与えると、
 **f(x) のグラフ・相直線（流れの向き）・固定点の安定性・時系列 x(t)** を描画する。
-
-1 次元系では、解の挙動はすべて相直線上で理解できる:
+解の挙動はすべて相直線上で理解できる:
 
 - `f(x) = 0` の点が **固定点**（平衡点）。
 - `f(x) > 0` の区間では x は増加（→）、`f(x) < 0` では減少（←）。
 - 固定点での傾きが安定性を決める: `f'(x*) < 0` なら **安定**（●）、`f'(x*) > 0` なら **不安定**（○）。
+
+**2 次元 `dx/dt = f(x,y), dy/dt = g(x,y)`** — 相平面に
+**ベクトル場・ヌルクライン（f=0 / g=0）・固定点（ヤコビアンの固有値で分類）・軌道** を描画し、
+粒子が流れに沿って動くアニメーションも再生できる。
 
 ![bistable](gallery/bistable.png)
 
@@ -26,9 +25,11 @@ dx/dt = f(x)
 | [`dyn-cli`](crates/dyn-cli)   | bin | 方程式 → PNG / アニメーション GIF | `plotters` |
 
 `dyn-core` は標準ライブラリのみに依存し、`no_std` 化や組込み用途への転用も視野に入る薄い数値コア。
-ブラウザ版・CLI はいずれもこの同じコアを消費する薄い presentation 層。
-**ブラウザ版が主役**で、数式パース・固定点検出・RK4 積分という本質ロジックは Rust(WASM) が実行し、
-描画（canvas）と UI（HTML/CSS）のみが JavaScript。
+**1 次元**のブラウザ版・CLI はいずれもこの同じコアを消費する薄い presentation 層で、
+数式パース・固定点検出・RK4 積分という本質ロジックは Rust(WASM) が実行し、描画（canvas）と UI のみが JavaScript。
+
+**2 次元タブ**はブラウザ内の自己完結 JavaScript（独自パーサ＋RK4＋ヤコビアンによる固定点分類）で実装しており、
+Rust クレートには依存しない（`web/index.html` 内）。
 
 ## 使い方
 
@@ -57,6 +58,11 @@ dx/dt = f(x)
 > `file://` で直接開くと ES モジュール/WASM の取得が CORS で失敗するため、HTTP 配信が必要。
 > `web/pkg/` は `build-web.sh`（= `cargo build --target wasm32-unknown-unknown` + `wasm-bindgen`）が生成する。
 
+ページ上部のタブで **1 次元 / 2 次元** を切り替えられる。2 次元は自励系
+`dx/dt = f(x,y)`, `dy/dt = g(x,y)` の相平面で、ベクトル場・ヌルクライン・固定点
+（ヤコビアンの固有値で分類）・軌道を描画する（例: 減衰振り子・Van der Pol・Lotka-Volterra）。
+2 次元側は 1 次元に手を入れずに追加した自己完結 JS。
+
 ### CLI（静止画 / GIF）
 
 ```sh
@@ -80,6 +86,8 @@ cargo run -p dyn-cli -- "x*(1-x)" --gif -o logistic.gif --frames 120
 - 関数: `sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 log2 sqrt cbrt abs sign floor ceil round pow(a,b) atan2 min max mod`
 - 定数: `pi e tau`、変数: `x`、パラメータ: `p` `q` `r`（式に現れたものだけ調整可能）
 
+2 次元タブの式は変数 `x`, `y`（パラメータ非対応）。演算・関数・定数・暗黙の掛け算は同じ。
+
 ## テスト
 
 ```sh
@@ -100,7 +108,7 @@ cargo test --workspace
 
 ## メモ（ツールチェーン）
 
-- stable Rust でビルド可（CI は stable、ローカル開発は nightly でも可）。
+- stable Rust でビルド可（ローカル開発は nightly でも可）。
 - plotters は既定の `ttf`/font-kit が最新 nightly で壊れる（`pathfinder_simd`）ため、
   純 Rust の `ab_glyph` フォントバックエンドを使用し、システム TTF を実行時に登録している
   （`crates/dyn-cli/src/font.rs`）。

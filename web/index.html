@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>一次の力学系ビジュアライザ  dx/dt = f(x)</title>
+<title>力学系ビジュアライザ（1次元・2次元）</title>
 <style>
   :root{
     --flow-pos:#d1495b; --flow-neg:#2a6f97;
@@ -32,12 +32,12 @@
   .eqrow{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
   .eqrow label{font-weight:600; white-space:nowrap;}
   .eqrow .dxdt{font-family:Georgia,serif; font-style:italic; font-size:18px;}
-  #eq{
+  #eq, #eqf, #eqg{
     flex:1; min-width:220px; font-size:16px; padding:9px 12px;
     border:1px solid #cfd4da; border-radius:8px;
     font-family:"SF Mono",Menlo,Consolas,monospace;
   }
-  #eq:focus{outline:2px solid #4c6ef5; border-color:#4c6ef5;}
+  #eq:focus, #eqf:focus, #eqg:focus{outline:2px solid #4c6ef5; border-color:#4c6ef5;}
   button{
     font:inherit; cursor:pointer; border:1px solid #cfd4da; background:#fff;
     padding:9px 14px; border-radius:8px; transition:.15s;
@@ -108,18 +108,31 @@
         margin:2px 6px 6px; font-size:13px; color:#334;}
   .bifhead .note{color:var(--muted); font-size:12px;}
   #bifparam{font:inherit; padding:3px 7px; border-radius:6px; border:1px solid #cfd4da;}
+  /* tabs (1D / 2D switcher) */
+  .tabs{max-width:1180px; margin:12px auto -1px; padding:0 16px; display:flex; gap:6px;}
+  .tab{font:inherit; cursor:pointer; border:1px solid var(--line); background:#eef1f6;
+       color:#445; padding:9px 20px; border-radius:10px 10px 0 0; font-weight:600;}
+  .tab:hover{background:#e2e8f5;}
+  .tab.active{background:var(--panel); color:var(--ink);}
+  #error2{display:none; color:#9d0208; background:#fff0f0; border:1px solid #ffd0d0;
+        padding:8px 12px; border-radius:8px; margin-top:10px; font-size:14px;}
+  #error2.on{display:block;}
 </style>
 </head>
 <body>
 <header>
   <div class="wrap" style="padding-bottom:0;">
-    <h1>一次の力学系ビジュアライザ&nbsp; <span class="eq">dx/dt = f(x)</span>
-        <span class="badge">Rust + WebAssembly</span></h1>
-    <p class="sub">関数 f(x) を入力すると、f(x) のグラフ・相直線（流れの向き）・固定点の安定性・時系列 x(t) を自動で描画します。計算は Rust(WASM) が行います。</p>
+    <h1>力学系ビジュアライザ&nbsp; <span class="badge">Rust + WebAssembly</span></h1>
+    <p class="sub">自励系の挙動を可視化します。上のタブで <strong>1 次元</strong> <span class="eq">dx/dt = f(x)</span> と <strong>2 次元</strong> <span class="eq">dx/dt = f(x,y), dy/dt = g(x,y)</span> を切り替えられます。</p>
   </div>
 </header>
 
-<div class="wrap">
+<div class="tabs">
+  <button class="tab active" data-view="view-1d">1次元　dx/dt = f(x)</button>
+  <button class="tab" data-view="view-2d">2次元　(x, y) 相平面</button>
+</div>
+
+<div class="wrap" id="view-1d">
   <div class="controls">
     <div class="eqrow">
       <label class="dxdt">dx/dt&nbsp;=</label>
@@ -205,6 +218,63 @@
     使える記号: 四則演算 <code>+ - * /</code>、べき乗 <code>^</code>、括弧、暗黙の掛け算 <code>x(1-x)</code>。
     関数: <code>sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 sqrt cbrt abs sign pow(a,b)</code>。
     定数: <code>pi e</code>。 変数 <code>x</code> に加え、パラメータ <code>p</code> <code>q</code> <code>r</code> を含めると各スライダーが現れ、分岐（固定点の生成・消滅）を観察できます。
+  </p>
+</div>
+
+<div class="wrap" id="view-2d" hidden>
+  <div class="controls">
+    <div class="eqrow">
+      <label class="dxdt">dx/dt&nbsp;=</label>
+      <input id="eqf" value="y" spellcheck="false" placeholder="f(x, y)">
+      <button class="primary" tabindex="-1" aria-hidden="true" style="visibility:hidden">描画</button>
+    </div>
+    <div class="eqrow">
+      <label class="dxdt">dy/dt&nbsp;=</label>
+      <input id="eqg" value="-sin(x) - 0.3*y" spellcheck="false" placeholder="g(x, y)">
+      <button class="primary" id="draw2">描画</button>
+    </div>
+    <div class="examples">
+      <span>例:</span>
+      <button class="chip" data-f="y" data-g="-sin(x) - 0.3*y">減衰振り子</button>
+      <button class="chip" data-f="y" data-g="-x">単振動 (中心)</button>
+      <button class="chip" data-f="x" data-g="-y">サドル</button>
+      <button class="chip" data-f="-x - y" data-g="x - y">安定渦</button>
+      <button class="chip" data-f="y" data-g="(1 - x*x)*y - x">Van der Pol</button>
+      <button class="chip" data-f="x - x*y" data-g="x*y - y">Lotka-Volterra</button>
+    </div>
+    <div class="params">
+      <div class="field"><label>x 範囲</label>
+        <input type="number" id="x2min" value="-3" step="0.5"><span>〜</span>
+        <input type="number" id="x2max" value="3" step="0.5"></div>
+      <div class="field"><label>y 範囲</label>
+        <input type="number" id="y2min" value="-3" step="0.5"><span>〜</span>
+        <input type="number" id="y2max" value="3" step="0.5"></div>
+      <div class="field"><label>軌道数</label>
+        <input type="number" id="ntraj2" value="36" step="1" min="4" max="400"></div>
+    </div>
+    <div id="error2"></div>
+    <div class="anim">
+      <button id="play2">▶ アニメーション再生</button>
+      <button id="reset2">⟲ リセット</button>
+      <div class="speed"><label>速さ</label>
+        <input type="range" id="speed2" min="0.25" max="4" step="0.25" value="1" style="width:110px;"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="it"><span class="bar" style="background:var(--flow-pos)"></span>x ヌルクライン (f=0)</div>
+    <div class="it"><span class="bar" style="background:var(--flow-neg)"></span>y ヌルクライン (g=0)</div>
+    <div class="it"><span class="dot st"></span>安定 (node/spiral)</div>
+    <div class="it"><span class="dot un"></span>不安定 (node/spiral)</div>
+    <div class="it">◆ サドル　○ 中心　■ 退化（非双曲）</div>
+  </div>
+
+  <div class="card"><canvas id="phase2"></canvas></div>
+  <div id="info2"></div>
+  <p class="hint">
+    2 次元自励系 <code>dx/dt = f(x,y)</code>, <code>dy/dt = g(x,y)</code> の相平面。
+    ベクトル場・ヌルクライン・固定点（ヤコビアンの固有値で分類）・軌道を描画します。
+    記法は 1 次元と同じ（使える変数は <code>x</code> と <code>y</code>）。
   </p>
 </div>
 
@@ -313,9 +383,18 @@ function buildModel(){
   const fxs=new Float64Array(NS+1);
   for(let i=0;i<=NS;i++) fxs[i]=xmin+(xmax-xmin)*i/NS;
 
-  // fixed points [x, slope, kind, ...]
+  // degenerate case: f ≡ 0 over the range (every point is a fixed point)
+  let fAbsMax=0; for(let i=0;i<fys.length;i++){ const a=Math.abs(fys[i]); if(isFinite(a)&&a>fAbsMax) fAbsMax=a; }
+  const zero = fAbsMax < 1e-12;
+
+  // fixed points in view [x, slope, kind, ...] — used for the graph markers
   const fpFlat=wm.fixed_points(); const fps=[];
   for(let i=0;i<fpFlat.length;i+=3) fps.push({x:fpFlat[i], slope:fpFlat[i+1], kind:fpFlat[i+2]});
+
+  // extended fixed points (incl. out-of-range, up to 100) for the table (skip when degenerate)
+  const fpsExt=[];
+  if(!zero){ const feFlat=wm.fixed_points_extended(100);
+    for(let i=0;i<feFlat.length;i+=4) fpsExt.push({x:feFlat[i], slope:feFlat[i+1], kind:feFlat[i+2], inRange:feFlat[i+3]>0.5}); }
 
   // flow [xm, sign, ...]
   const flFlat=wm.flow_segments(); const flow=[];
@@ -324,7 +403,7 @@ function buildModel(){
   return {
     wm, eq:expr, params:pv, used, xmin, xmax, tmax,
     dt:wm.dt, nTraj:wm.n_traj, tlen:wm.traj_len,
-    fmin:wm.fmin, fmax:wm.fmax, fxs, fys, fps, flow,
+    fmin:wm.fmin, fmax:wm.fmax, fxs, fys, fps, fpsExt, flow, zero,
     traj: wm.trajectories(),
   };
 }
@@ -396,8 +475,13 @@ function drawPhase(m, animX){
     else           arrow(ctx,cx+span,y0,cx-span,y0,C.flowNeg,2.2);
   }
 
-  // fixed points
-  for(const p of m.fps){
+  // fixed points (skip markers when degenerate / too many, to avoid clutter)
+  if(m.zero || m.fps.length>50){
+    ctx.fillStyle="#7a828c"; ctx.font="13px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText(m.zero ? "f(x) ≡ 0 — すべての点が固定点（中立）" : "固定点が多数のため非表示",
+                 (M.l+(w-M.r))/2, (M.t+(h-M.b))/2 - 16);
+  } else for(const p of m.fps){
     if(p.x<m.xmin||p.x>m.xmax) continue;
     const px=X(p.x);
     ctx.beginPath(); ctx.arc(px,y0,6,0,7);
@@ -460,8 +544,8 @@ function drawTime(m, animT){
     ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(ty),M.l-6,py);
   }
 
-  // horizontal lines at the fixed points
-  for(const p of m.fps){
+  // horizontal lines at the fixed points (skip when too many, to avoid clutter)
+  if(m.fps.length<=50) for(const p of m.fps){
     if(p.x<m.xmin||p.x>m.xmax) continue;
     ctx.strokeStyle=fpColor(p.kind); ctx.globalAlpha=0.55; ctx.lineWidth=1.2; ctx.setLineDash([5,4]);
     ctx.beginPath(); ctx.moveTo(M.l,Y(p.x)); ctx.lineTo(w-M.r,Y(p.x)); ctx.stroke();
@@ -503,24 +587,34 @@ function drawTime(m, animT){
 /* ====== Fixed-point table ====== */
 function renderInfo(m){
   const el=$("info");
-  let rows=m.fps.map(p=>{
+  if(m.zero){
+    el.innerHTML=`<h3>固定点と安定性</h3>
+      <div class="hint">f(x) ≡ 0：この範囲では f が恒等的に 0 で、<strong>すべての点が固定点</strong>（中立・非双曲）です。系に運動はありません。</div>`;
+    return;
+  }
+  const list = m.fpsExt && m.fpsExt.length ? m.fpsExt : m.fps.map(p=>({...p,inRange:true}));
+  let rows=list.map(p=>{
     const tag = p.kind===0?`<span class="tag st">安定</span>`
               : p.kind===1?`<span class="tag un">不安定</span>`
               : `<span class="tag semi">半安定</span>`;
-    return `<tr><td><code>x* = ${fmt(p.x)}</code></td><td>${tag}</td>
+    const oor = p.inRange===false;
+    const note = oor ? ` <span style="color:#aab1ba;font-size:11px">範囲外</span>` : "";
+    return `<tr${oor?' style="opacity:.55"':''}><td><code>x* = ${fmt(p.x)}</code>${note}</td><td>${tag}</td>
             <td>f′(x*) = ${p.slope.toFixed(3)}</td></tr>`;
   }).join("");
-  if(!m.fps.length) rows=`<tr><td colspan="3" style="color:#8a93a0">
-      この範囲に固定点はありません（流れは一方向）。</td></tr>`;
+  if(!list.length) rows=`<tr><td colspan="3" style="color:#8a93a0">
+      固定点はありません（流れは一方向）。</td></tr>`;
+  const inN = list.filter(p=>p.inRange!==false).length;
   const cnt={st:0,un:0,semi:0};
-  m.fps.forEach(p=> cnt[p.kind===0?"st":p.kind===1?"un":"semi"]++);
+  list.forEach(p=> cnt[p.kind===0?"st":p.kind===1?"un":"semi"]++);
   const shown=PNAMES.map((nm,i)=> m.used[i]?`${nm} = ${m.params[i].toFixed(2)}`:null).filter(Boolean);
   const rtxt = shown.length ? `（現在 ${shown.join(", ")}）` : "";
+  const range = list.length>inN ? `（範囲内 ${inN} / 表示 ${list.length}${list.length>=100?"＝上限":""}）` : `（${list.length} 個）`;
   el.innerHTML=`<h3>固定点と安定性 ${rtxt}</h3>
     <table><thead><tr><th>位置</th><th>種類</th><th>線形化</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <div class="hint">安定 ${cnt.st} 個 / 不安定 ${cnt.un} 個${cnt.semi?` / 半安定 ${cnt.semi} 個`:""}。
-    安定固定点は近くの初期値を引き寄せ、不安定固定点は分水嶺（引き込み領域の境界）になります。</div>`;
+    <div class="hint">${range} 安定 ${cnt.st} / 不安定 ${cnt.un}${cnt.semi?` / 半安定 ${cnt.semi}`:""}。
+    グラフには範囲内のみ描画。安定固定点は近くの初期値を引き寄せ、不安定固定点は分水嶺になります。</div>`;
 }
 
 /* ====== Bifurcation diagram (when parameters exist) ====== */
@@ -548,6 +642,12 @@ function drawBif(m, idx){
 
   // get fixed points as [v, x*, kind] and group them into columns by v
   const data=m.wm.bifurcation(idx, BIF_VMIN, BIF_VMAX, 240); // [v,x*,kind,...]
+  if(data.length===0){
+    // no isolated fixed points across the sweep (e.g. f ≡ 0 / degenerate)
+    ctx.fillStyle="#8a93a0"; ctx.font="13px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("この範囲では固定点が定まりません（f ≡ 0 など退化）", (M.l+w-M.r)/2, (M.t+h-M.b)/2);
+  }
   const cols=[];
   for(let i=0;i<data.length;i+=3){
     const v=data[i];
@@ -682,7 +782,7 @@ function startAnim(){
 /* ====== Events ====== */
 $("draw").addEventListener("click",render);
 $("eq").addEventListener("keydown",e=>{ if(e.key==="Enter") render(); });
-document.querySelectorAll(".chip").forEach(b=>b.addEventListener("click",()=>{
+document.querySelectorAll("#view-1d .chip").forEach(b=>b.addEventListener("click",()=>{
   $("eq").value=b.dataset.eq; render();
 }));
 ["xmin","xmax","tmax","nic"].forEach(id=>$(id).addEventListener("change",render));
@@ -711,6 +811,423 @@ window.addEventListener("resize",()=>{
 init()
   .then(()=>{ WASM_READY=true; render(); })
   .catch(e=>showError("WASM の初期化に失敗しました: "+e));
+</script>
+
+<!-- ====== 2D phase-plane visualizer (self-contained; does not touch the 1D code) ====== -->
+<script>
+(function(){
+  "use strict";
+  const $ = id => document.getElementById(id);
+
+  /* ---- tab switching ---- */
+  let drawn2 = false;
+  document.querySelectorAll(".tab").forEach(tab=>{
+    tab.addEventListener("click",()=>{
+      document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t===tab));
+      const v = tab.dataset.view;
+      $("view-1d").hidden = v!=="view-1d";
+      $("view-2d").hidden = v!=="view-2d";
+      if(v==="view-2d"){ draw2D(); drawn2=true; } else { stopAnim2(); }   // canvas needs to be visible to size
+    });
+  });
+
+  /* ---- mini expression parser for h(x, y) ---- */
+  const F1 = {sin:Math.sin,cos:Math.cos,tan:Math.tan,asin:Math.asin,acos:Math.acos,
+    atan:Math.atan,sinh:Math.sinh,cosh:Math.cosh,tanh:Math.tanh,exp:Math.exp,
+    log:Math.log,ln:Math.log,log10:Math.log10,log2:Math.log2,sqrt:Math.sqrt,
+    cbrt:Math.cbrt,abs:Math.abs,sign:Math.sign,floor:Math.floor,ceil:Math.ceil,round:Math.round};
+  const F2 = {pow:Math.pow,atan2:Math.atan2,min:Math.min,max:Math.max,mod:(a,b)=>a-b*Math.floor(a/b)};
+  const CONST = {pi:Math.PI,e:Math.E,tau:2*Math.PI};
+
+  function compile(src){
+    const s=src, n=s.length; const toks=[]; let i=0;
+    const isd=c=>c>="0"&&c<="9", isa=c=>/[a-zA-Z_]/.test(c);
+    while(i<n){
+      const c=s[i];
+      if(c===" "||c==="\t"){i++;continue;}
+      if(isd(c)||(c==="."&&isd(s[i+1]))){
+        let j=i+1; while(j<n&&(isd(s[j])||s[j]==="."))j++;
+        if((s[j]==="e"||s[j]==="E")&&(isd(s[j+1])||((s[j+1]==="+"||s[j+1]==="-")&&isd(s[j+2])))){j+=2;while(j<n&&isd(s[j]))j++;}
+        toks.push({t:"num",v:parseFloat(s.slice(i,j))}); i=j; continue;
+      }
+      if(isa(c)){ let j=i+1; while(j<n&&/[a-zA-Z0-9_]/.test(s[j]))j++; const nm=s.slice(i,j).toLowerCase(); i=j;
+        toks.push((nm in F1)?{t:"f1",v:nm}:(nm in F2)?{t:"f2",v:nm}:{t:"name",v:nm}); continue; }
+      if("+-*/^(),".includes(c)){ toks.push({t:c}); i++; continue; }
+      throw new Error("認識できない文字: '"+c+"'");
+    }
+    // implicit multiplication
+    const ve=t=>t&&(t.t==="num"||t.t==="name"||t.t===")");
+    const vs=t=>t&&(t.t==="num"||t.t==="name"||t.t==="f1"||t.t==="f2"||t.t==="(");
+    const tk=[]; for(const t of toks){ if(tk.length&&ve(tk[tk.length-1])&&vs(t)) tk.push({t:"*"}); tk.push(t); }
+    // shunting-yard -> RPN
+    const out=[], op=[]; const prec={"+":2,"-":2,"*":3,"/":3,"^":4,u:3}; const right={"^":true,u:true};
+    let prev=false;
+    for(const t of tk){
+      if(t.t==="num"){ out.push(t); prev=true; }
+      else if(t.t==="name"){
+        if(t.v==="x") out.push({t:"x"});
+        else if(t.v==="y") out.push({t:"y"});
+        else if(t.v in CONST) out.push({t:"num",v:CONST[t.v]});
+        else throw new Error("未知の変数: '"+t.v+"' (使えるのは x, y, pi, e)");
+        prev=true;
+      }
+      else if(t.t==="f1"||t.t==="f2"){ op.push(t); prev=false; }
+      else if(t.t===","){ while(op.length&&op[op.length-1].t!=="(") out.push(op.pop()); prev=false; }
+      else if("+-*/^".includes(t.t)){
+        let o=t.t;
+        if((o==="+"||o==="-")&&!prev){ if(o==="+"){prev=false;continue;} o="u"; }
+        while(op.length){ const tp=op[op.length-1]; if(tp.t==="(") break;
+          const p2=(tp.t==="f1"||tp.t==="f2")?9:prec[tp.t];
+          if(p2>prec[o]||(p2===prec[o]&&!right[o])) out.push(op.pop()); else break; }
+        op.push({t:o}); prev=false;
+      }
+      else if(t.t==="("){ op.push(t); prev=false; }
+      else if(t.t===")"){ while(op.length&&op[op.length-1].t!=="(") out.push(op.pop());
+        if(!op.length) throw new Error("括弧が対応していません"); op.pop();
+        if(op.length&&(op[op.length-1].t==="f1"||op[op.length-1].t==="f2")) out.push(op.pop()); prev=true; }
+    }
+    while(op.length){ const o=op.pop(); if(o.t==="(") throw new Error("括弧が対応していません"); out.push(o); }
+    if(!out.length) throw new Error("式が空です");
+    const fn=(x,y)=>{ const st=[]; let sp=0;
+      for(const o of out){ switch(o.t){
+        case "num": st[sp++]=o.v; break;
+        case "x": st[sp++]=x; break;
+        case "y": st[sp++]=y; break;
+        case "u": st[sp-1]=-st[sp-1]; break;
+        case "f1": st[sp-1]=F1[o.v](st[sp-1]); break;
+        case "f2": { const b=st[--sp]; st[sp-1]=F2[o.v](st[sp-1],b); break; }
+        default: { const b=st[--sp], a=st[sp-1];
+          st[sp-1]= o.t==="+"?a+b:o.t==="-"?a-b:o.t==="*"?a*b:o.t==="/"?a/b:Math.pow(a,b); }
+      } } return st[0]; };
+    fn(0.13,0.17); // validate
+    return fn;
+  }
+
+  /* ---- helpers ---- */
+  function setupCanvas(cv, cssH){
+    const dpr=window.devicePixelRatio||1;
+    const cssW=cv.parentElement.clientWidth-16;
+    cv.style.height=cssH+"px";
+    cv.width=Math.max(1,Math.round(cssW*dpr)); cv.height=Math.round(cssH*dpr);
+    const ctx=cv.getContext("2d"); ctx.setTransform(dpr,0,0,dpr,0,0);
+    return {ctx,w:cssW,h:cssH};
+  }
+  function ticks(min,max,n){
+    const span=max-min; if(span<=0||!isFinite(span)) return [min];
+    const raw=span/n, mag=Math.pow(10,Math.floor(Math.log10(raw))), norm=raw/mag;
+    const step=(norm<1.5?1:norm<3?2:norm<7?5:10)*mag, out=[];
+    for(let v=Math.ceil(min/step-1e-9)*step; v<=max+step*1e-6; v+=step) out.push(Math.abs(v)<step*1e-6?0:v);
+    return out;
+  }
+  function fmt(v){ if(v===0)return"0"; const a=Math.abs(v);
+    let s=(a<0.001||a>=10000)?v.toExponential(1):v.toFixed(a<1?2:(a<10?2:1));
+    return s.replace(/\.?0+$/,"").replace(/\.?0+e/,"e"); }
+
+  const C={pos:"#d1495b",neg:"#2a6f97",stable:"#1b4332",unstable:"#9d0208",
+           saddle:"#e8590c",center:"#2a6f97",field:"#aab4c0",traj:"#5a6472",
+           degenerate:"#8a93a0"};
+  function viridis(t){ t=Math.max(0,Math.min(1,t));
+    const s=[[68,1,84],[59,82,139],[33,144,140],[93,201,99],[253,231,37]];
+    const u=t*(s.length-1), i=Math.floor(u), f=u-i, a=s[i], b=s[Math.min(i+1,s.length-1)];
+    return `rgb(${Math.round(a[0]+(b[0]-a[0])*f)},${Math.round(a[1]+(b[1]-a[1])*f)},${Math.round(a[2]+(b[2]-a[2])*f)})`; }
+
+  /* ---- 2D numerics ---- */
+  function rk4(F,x,y,dt){
+    const a=F(x,y), b=F(x+0.5*dt*a[0],y+0.5*dt*a[1]),
+          c=F(x+0.5*dt*b[0],y+0.5*dt*b[1]), d=F(x+dt*c[0],y+dt*c[1]);
+    return [x+dt*(a[0]+2*b[0]+2*c[0]+d[0])/6, y+dt*(a[1]+2*b[1]+2*c[1]+d[1])/6];
+  }
+  function jacobian(F,x,y){ const h=1e-5;
+    const fx=(F(x+h,y)[0]-F(x-h,y)[0])/(2*h), fy=(F(x,y+h)[0]-F(x,y-h)[0])/(2*h),
+          gx=(F(x+h,y)[1]-F(x-h,y)[1])/(2*h), gy=(F(x,y+h)[1]-F(x,y-h)[1])/(2*h);
+    return [fx,fy,gx,gy];
+  }
+  function newton(F,x,y){
+    for(let k=0;k<40;k++){ const v=F(x,y); const [fx,fy,gx,gy]=jacobian(F,x,y);
+      const det=fx*gy-fy*gx; if(Math.abs(det)<1e-12) break;
+      const dx=(v[0]*gy-fy*v[1])/det, dy=(fx*v[1]-v[0]*gx)/det; x-=dx; y-=dy;
+      if(!isFinite(x)||!isFinite(y)) return null;
+      if(Math.abs(dx)+Math.abs(dy)<1e-11) break; }
+    const v=F(x,y); return Math.hypot(v[0],v[1])<1e-6?[x,y]:null;
+  }
+  function classify(F,x,y){
+    const [fx,fy,gx,gy]=jacobian(F,x,y);
+    const T=fx+gy, D=fx*gy-fy*gx, disc=T*T-4*D;
+    // scale of the Jacobian entries, used to detect a (near-)zero / non-hyperbolic Jacobian
+    const jscale=Math.max(Math.abs(fx),Math.abs(fy),Math.abs(gx),Math.abs(gy));
+    let kind, ev;
+    if(jscale<1e-7){
+      // Jacobian ≈ 0 (e.g. f≡g≡0): both eigenvalues ≈ 0, non-hyperbolic.
+      // The linearization tells us nothing about stability — degenerate (neutral), NOT unstable.
+      kind="degenerate";
+    } else if(D<0){ kind="saddle"; }
+    else if(disc<0){ kind = T<-1e-7?"stable-spiral":T>1e-7?"unstable-spiral":"center"; }
+    else if(Math.abs(D)<1e-6*jscale*jscale){
+      // one eigenvalue ≈ 0 (e.g. a line of fixed points): non-hyperbolic, linear test inconclusive.
+      kind="degenerate";
+    }
+    else { kind = T<0?"stable-node":"unstable-node"; }
+    if(disc<0){ ev=`${(T/2).toFixed(2)} ± ${(Math.sqrt(-disc)/2).toFixed(2)}i`; }
+    else { ev=`${((T+Math.sqrt(disc))/2).toFixed(2)}, ${((T-Math.sqrt(disc))/2).toFixed(2)}`; }
+    return {kind,ev};
+  }
+  const KIND_JP={"stable-node":"安定ノード","unstable-node":"不安定ノード",
+    "stable-spiral":"安定渦状点","unstable-spiral":"不安定渦状点","saddle":"サドル","center":"中心",
+    "degenerate":"退化（非双曲）"};
+
+  /* ---- 2D rendering ---- */
+  function err2(msg){ const e=$("error2"); if(msg){e.textContent=msg;e.classList.add("on");}else e.classList.remove("on"); }
+
+  // number of trajectories as an N×N grid (so they stay evenly placed -> perfect square)
+  function gridN(){ return Math.max(2, Math.min(20, Math.round(Math.sqrt(parseFloat($("ntraj2").value)||36)))); }
+
+  function draw2D(opts){
+    opts=opts||{}; stopAnim2();   // any redraw stops the animation
+    let F;
+    try{
+      const f=compile($("eqf").value.trim()), g=compile($("eqg").value.trim());
+      F=(x,y)=>[f(x,y),g(x,y)];
+    }catch(e){ err2("式を解釈できません: "+e.message); return; }
+    const xmin=parseFloat($("x2min").value), xmax=parseFloat($("x2max").value);
+    const ymin=parseFloat($("y2min").value), ymax=parseFloat($("y2max").value);
+    if(!(xmax>xmin&&ymax>ymin)){ err2("範囲が不正です (min < max)."); return; }
+    err2(null);
+
+    const {ctx,w,h}=setupCanvas($("phase2"), 560);
+    ctx.clearRect(0,0,w,h);
+    const M={l:54,r:16,t:26,b:42};
+    const X=v=>M.l+(v-xmin)/(xmax-xmin)*(w-M.l-M.r);
+    const Y=v=>h-M.b-(v-ymin)/(ymax-ymin)*(h-M.t-M.b);
+    const inB=(x,y)=>x>=xmin&&x<=xmax&&y>=ymin&&y<=ymax;
+
+    // grid + ticks
+    ctx.font="11px sans-serif"; ctx.lineWidth=1;
+    ctx.textAlign="center"; ctx.textBaseline="top";
+    for(const tx of ticks(xmin,xmax,8)){ const px=X(tx);
+      ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(px,M.t); ctx.lineTo(px,h-M.b); ctx.stroke();
+      ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(tx),px,h-M.b+5); }
+    ctx.textAlign="right"; ctx.textBaseline="middle";
+    for(const ty of ticks(ymin,ymax,6)){ const py=Y(ty);
+      ctx.strokeStyle="#eef1f4"; ctx.beginPath(); ctx.moveTo(M.l,py); ctx.lineTo(w-M.r,py); ctx.stroke();
+      ctx.fillStyle="#8a93a0"; ctx.fillText(fmt(ty),M.l-6,py); }
+    // axes x=0,y=0
+    ctx.strokeStyle="#cfd6dd"; ctx.lineWidth=1.2;
+    if(0>=xmin&&0<=xmax){ ctx.beginPath(); ctx.moveTo(X(0),M.t); ctx.lineTo(X(0),h-M.b); ctx.stroke(); }
+    if(0>=ymin&&0<=ymax){ ctx.beginPath(); ctx.moveTo(M.l,Y(0)); ctx.lineTo(w-M.r,Y(0)); ctx.stroke(); }
+
+    ctx.save();
+    ctx.beginPath(); ctx.rect(M.l,M.t,w-M.l-M.r,h-M.t-M.b); ctx.clip();
+
+    // --- vector field ---
+    const ng=23; const cell=Math.min((w-M.l-M.r)/ng,(h-M.t-M.b)/ng);
+    ctx.strokeStyle=C.field; ctx.fillStyle=C.field; ctx.lineWidth=1;
+    for(let i=0;i<ng;i++) for(let j=0;j<ng;j++){
+      const xx=xmin+(xmax-xmin)*(i+0.5)/ng, yy=ymin+(ymax-ymin)*(j+0.5)/ng;
+      const v=F(xx,yy), sp=Math.hypot(v[0],v[1]);
+      if(!isFinite(sp)||sp<1e-9) continue;
+      const nx=v[0]/sp, ny=v[1]/sp, L=cell*0.42;
+      const x0=X(xx), y0=Y(yy), x1=x0+nx*L, y1=y0-ny*L;  // screen y is flipped
+      ctx.beginPath(); ctx.moveTo(x0,y0); ctx.lineTo(x1,y1); ctx.stroke();
+      const ang=Math.atan2(y1-y0,x1-x0), hl=4;
+      ctx.beginPath(); ctx.moveTo(x1,y1);
+      ctx.lineTo(x1-hl*Math.cos(ang-0.5),y1-hl*Math.sin(ang-0.5));
+      ctx.lineTo(x1-hl*Math.cos(ang+0.5),y1-hl*Math.sin(ang+0.5));
+      ctx.closePath(); ctx.fill();
+    }
+
+    // --- trajectories (seed grid, forward+backward), colored like the 1D time series ---
+    // (skipped while animating: the moving particles trace the flow instead)
+    const diag=Math.hypot(xmax-xmin,ymax-ymin), dt=diag*0.0022;
+    if(!opts.noTraj){
+      const STEPS=260, padX=(xmax-xmin)*0.06, padY=(ymax-ymin)*0.06;
+      ctx.lineWidth=1.6; ctx.globalAlpha=0.85;
+      const seeds=gridN(), total=seeds*seeds;
+      for(let i=0;i<seeds;i++) for(let j=0;j<seeds;j++){
+        const sx=xmin+(xmax-xmin)*(i+0.5)/seeds, sy=ymin+(ymax-ymin)*(j+0.5)/seeds;
+        ctx.strokeStyle=viridis((i*seeds+j)/(total-1));
+        for(const sgn of [1,-1]){
+          let x=sx,y=sy; ctx.beginPath(); ctx.moveTo(X(x),Y(y));
+          for(let s=0;s<STEPS;s++){
+            const nx=rk4(F,x,y,sgn*dt); x=nx[0]; y=nx[1];
+            if(!isFinite(x)||!isFinite(y)) break;
+            if(x<xmin-padX||x>xmax+padX||y<ymin-padY||y>ymax+padY) break;
+            ctx.lineTo(X(x),Y(y));
+            const v=F(x,y); if(Math.hypot(v[0],v[1])<1e-7) break;
+          }
+          ctx.stroke();
+        }
+      }
+      ctx.globalAlpha=1;
+    }
+
+    // --- nullclines (f=0 red, g=0 blue) via sign grid ---
+    // marching squares: draw the zero contour of `comp` as solid line segments
+    const drawZero=(comp,color)=>{
+      const N=150;
+      const xc=new Float64Array(N+1), yc=new Float64Array(N+1);
+      for(let i=0;i<=N;i++) xc[i]=xmin+(xmax-xmin)*i/N;
+      for(let j=0;j<=N;j++) yc[j]=ymin+(ymax-ymin)*j/N;
+      const sg=new Array(N+1);
+      for(let j=0;j<=N;j++){ sg[j]=new Float64Array(N+1);
+        for(let i=0;i<=N;i++) sg[j][i]=comp(xc[i],yc[j]); }
+      const cross=(va,xa,ya,vb,xb,yb)=>{ const t=va/(va-vb); return [xa+t*(xb-xa), ya+t*(yb-ya)]; };
+      ctx.strokeStyle=color; ctx.lineWidth=2; ctx.lineJoin="round"; ctx.beginPath();
+      for(let j=0;j<N;j++) for(let i=0;i<N;i++){
+        const a=sg[j][i], b=sg[j][i+1], c=sg[j+1][i+1], d=sg[j+1][i]; // BL,BR,TR,TL
+        if(!(isFinite(a)&&isFinite(b)&&isFinite(c)&&isFinite(d))) continue;
+        const x0=xc[i],x1=xc[i+1],y0=yc[j],y1=yc[j+1], pts=[];
+        if((a<=0)!==(b<=0)) pts.push(cross(a,x0,y0,b,x1,y0)); // bottom
+        if((b<=0)!==(c<=0)) pts.push(cross(b,x1,y0,c,x1,y1)); // right
+        if((c<=0)!==(d<=0)) pts.push(cross(c,x1,y1,d,x0,y1)); // top
+        if((d<=0)!==(a<=0)) pts.push(cross(d,x0,y1,a,x0,y0)); // left
+        if(pts.length>=2){ ctx.moveTo(X(pts[0][0]),Y(pts[0][1])); ctx.lineTo(X(pts[1][0]),Y(pts[1][1])); }
+        if(pts.length===4){ ctx.moveTo(X(pts[2][0]),Y(pts[2][1])); ctx.lineTo(X(pts[3][0]),Y(pts[3][1])); }
+      }
+      ctx.stroke();
+    };
+    drawZero((x,y)=>F(x,y)[0], C.pos);
+    drawZero((x,y)=>F(x,y)[1], C.neg);
+    ctx.restore();
+
+    // --- fixed points ---
+    // A (near-)zero vector field means every point is a neutral fixed point;
+    // show a note rather than flooding the plot with degenerate markers.
+    let fAbsMax=0;
+    for(let i=0;i<=10;i++) for(let j=0;j<=10;j++){
+      const v=F(xmin+(xmax-xmin)*i/10, ymin+(ymax-ymin)*j/10);
+      const mag=Math.hypot(v[0],v[1]); if(isFinite(mag)&&mag>fAbsMax) fAbsMax=mag;
+    }
+    if(fAbsMax<1e-12){
+      ctx.fillStyle="#7a828c"; ctx.font="13px sans-serif";
+      ctx.textAlign="center"; ctx.textBaseline="middle";
+      ctx.fillText("ベクトル場 ≡ 0 — 全平面が固定点（中立・非双曲）", M.l+(w-M.l-M.r)/2, M.t+(h-M.t-M.b)/2);
+      ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
+      ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText("x", w-M.r, h-2);
+      ctx.save(); ctx.translate(13, M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
+      ctx.textBaseline="top"; ctx.fillText("y",0,0); ctx.restore();
+      $("info2").innerHTML = `<h3>固定点と分類</h3>
+        <p style="color:#55606b">ベクトル場が恒等的に 0 です。すべての点が固定点で、どこにも流れがありません
+        （中立・非双曲）。特定の平衡点を「安定／不安定」と分類することはできません。</p>`;
+      return {F,X,Y,w,h,M,xmin,xmax,ymin,ymax,dt,cv:$("phase2")};
+    }
+    const fps=[]; const tol=diag*0.02; const ns=10;
+    for(let i=0;i<=ns;i++) for(let j=0;j<=ns;j++){
+      const r=newton(F, xmin+(xmax-xmin)*i/ns, ymin+(ymax-ymin)*j/ns);
+      if(!r||!inB(r[0],r[1])) continue;
+      if(fps.some(p=>Math.hypot(p[0]-r[0],p[1]-r[1])<tol)) continue;
+      fps.push(r);
+    }
+    const info=[];
+    for(const [px,py] of fps){
+      const {kind,ev}=classify(F,px,py); info.push({px,py,kind,ev});
+      const cx=X(px), cy=Y(py);
+      if(kind==="saddle"){ // diamond
+        ctx.fillStyle=C.saddle; ctx.strokeStyle="#fff"; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.moveTo(cx,cy-7); ctx.lineTo(cx+7,cy); ctx.lineTo(cx,cy+7); ctx.lineTo(cx-7,cy);
+        ctx.closePath(); ctx.fill(); ctx.stroke();
+      } else if(kind==="center"){
+        ctx.strokeStyle=C.center; ctx.lineWidth=2.4; ctx.beginPath(); ctx.arc(cx,cy,6,0,7); ctx.stroke();
+      } else if(kind==="degenerate"){ // gray square (non-hyperbolic / neutral)
+        ctx.fillStyle=C.degenerate; ctx.strokeStyle="#fff"; ctx.lineWidth=1.5;
+        ctx.beginPath(); ctx.rect(cx-5.5,cy-5.5,11,11); ctx.fill(); ctx.stroke();
+      } else {
+        const stable=kind.startsWith("stable");
+        ctx.beginPath(); ctx.arc(cx,cy,6,0,7);
+        if(stable){ ctx.fillStyle=C.stable; ctx.fill(); }
+        else { ctx.fillStyle="#fff"; ctx.fill(); ctx.lineWidth=2.4; ctx.strokeStyle=C.unstable; ctx.stroke(); }
+      }
+    }
+
+    // labels
+    ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
+    ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText("x", w-M.r, h-2);
+    ctx.save(); ctx.translate(13, M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
+    ctx.textBaseline="top"; ctx.fillText("y",0,0); ctx.restore();
+
+    // info table
+    const rows = info.length ? info.map(p=>{
+      const c = p.kind==="saddle"?C.saddle:p.kind==="center"?C.center:p.kind==="degenerate"?C.degenerate:p.kind.startsWith("stable")?C.stable:C.unstable;
+      return `<tr><td><code>(${fmt(p.px)}, ${fmt(p.py)})</code></td>
+        <td style="color:${c};font-weight:600">${KIND_JP[p.kind]}</td>
+        <td>λ = ${p.ev}</td></tr>`;
+    }).join("") : `<tr><td colspan="3" style="color:#8a93a0">この範囲に固定点はありません。</td></tr>`;
+    $("info2").innerHTML = `<h3>固定点と分類 (${info.length} 個)</h3>
+      <table><thead><tr><th>位置 (x*, y*)</th><th>種類</th><th>固有値</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="hint">ヤコビアンの固有値 λ で分類: 実部の符号が安定性、虚部があれば渦状（回転）。</div>`;
+    return {F,X,Y,w,h,M,xmin,xmax,ymin,ymax,dt,cv:$("phase2")};
+  }
+
+  /* ---- 2D animation: particles flowing along the field over a fixed background ---- */
+  const anim2={on:false,raf:0,last:0,parts:[],geom:null,bg:null};
+  function stopAnim2(){ anim2.on=false; cancelAnimationFrame(anim2.raf);
+    const b=$("play2"); if(b) b.textContent="▶ アニメーション再生"; }
+  function snapshot(cv){ const b=document.createElement("canvas");
+    b.width=cv.width; b.height=cv.height; b.getContext("2d").drawImage(cv,0,0); return b; }
+  function respawn2(g,p){ p.x=g.xmin+Math.random()*(g.xmax-g.xmin);
+    p.y=g.ymin+Math.random()*(g.ymax-g.ymin); p.hist.length=0; p.age=0; p.life=180+Math.random()*260; }
+  function startAnim2(){
+    const g=draw2D({noTraj:true}); if(!g) return;      // background = field + nullclines + fixed points
+    anim2.geom=g; anim2.bg=snapshot(g.cv);
+    const ns=gridN(); anim2.parts=[];
+    for(let i=0;i<ns;i++) for(let j=0;j<ns;j++){
+      anim2.parts.push({ x:g.xmin+(g.xmax-g.xmin)*(i+0.5)/ns, y:g.ymin+(g.ymax-g.ymin)*(j+0.5)/ns,
+        col:viridis((i*ns+j)/(ns*ns-1)), hist:[], age:0, life:180+Math.random()*260 });
+    }
+    anim2.on=true; anim2.last=performance.now();
+    $("play2").textContent="❚❚ 一時停止";
+    anim2.raf=requestAnimationFrame(step2);
+  }
+  function step2(now){
+    if(!anim2.on) return;
+    const g=anim2.geom;
+    const dtA=Math.min(0.05,(now-anim2.last)/1000)*parseFloat($("speed2").value)*2.0; anim2.last=now;
+    const maxStep=Math.hypot(g.xmax-g.xmin,g.ymax-g.ymin)*0.012;
+    const px=(g.xmax-g.xmin)*0.04, py=(g.ymax-g.ymin)*0.04;
+    for(const p of anim2.parts){
+      let rem=dtA, guard=0;
+      while(rem>1e-9 && guard++<60){
+        const v=g.F(p.x,p.y), sp=Math.hypot(v[0],v[1]);
+        if(!isFinite(sp)||sp<1e-9) break;
+        const h=Math.min(rem, maxStep/sp), nx=rk4(g.F,p.x,p.y,h);
+        if(!isFinite(nx[0])||!isFinite(nx[1])){ respawn2(g,p); rem=0; break; }
+        p.x=nx[0]; p.y=nx[1]; rem-=h;
+      }
+      p.hist.push([p.x,p.y]); if(p.hist.length>70) p.hist.shift();
+      if(++p.age>p.life || p.x<g.xmin-px||p.x>g.xmax+px||p.y<g.ymin-py||p.y>g.ymax+py) respawn2(g,p);
+    }
+    const ctx=g.cv.getContext("2d");
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(anim2.bg,0,0); ctx.restore();
+    ctx.save(); ctx.beginPath(); ctx.rect(g.M.l,g.M.t,g.w-g.M.l-g.M.r,g.h-g.M.t-g.M.b); ctx.clip();
+    ctx.lineJoin="round"; ctx.lineCap="round";
+    // past trajectory: a continuous line only (no dots)
+    for(const p of anim2.parts){
+      if(p.hist.length<2) continue;
+      ctx.strokeStyle=p.col; ctx.lineWidth=1.6; ctx.globalAlpha=0.75; ctx.beginPath();
+      for(let k=0;k<p.hist.length;k++){ const xx=g.X(p.hist[k][0]),yy=g.Y(p.hist[k][1]); k?ctx.lineTo(xx,yy):ctx.moveTo(xx,yy); }
+      ctx.stroke();
+    }
+    // current position: a single dot, kept within the line thickness (no bump)
+    ctx.globalAlpha=1;
+    for(const p of anim2.parts){
+      ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(g.X(p.x),g.Y(p.y),0.8,0,7); ctx.fill();
+    }
+    ctx.restore();
+    anim2.raf=requestAnimationFrame(step2);
+  }
+
+  /* ---- 2D events ---- */
+  $("play2").addEventListener("click",()=>{ if(anim2.on) stopAnim2(); else startAnim2(); });
+  $("reset2").addEventListener("click",()=>{ stopAnim2(); draw2D(); });
+  $("draw2").addEventListener("click",draw2D);
+  ["eqf","eqg"].forEach(id=>$(id).addEventListener("keydown",e=>{ if(e.key==="Enter") draw2D(); }));
+  ["x2min","x2max","y2min","y2max"].forEach(id=>$(id).addEventListener("change",draw2D));
+  $("ntraj2").addEventListener("change",()=>{ const N=gridN(); $("ntraj2").value=N*N; draw2D(); }); // snap to perfect square
+  document.querySelectorAll("#view-2d .chip").forEach(b=>b.addEventListener("click",()=>{
+    $("eqf").value=b.dataset.f; $("eqg").value=b.dataset.g; draw2D();
+  }));
+  window.addEventListener("resize",()=>{ if(!$("view-2d").hidden) draw2D(); });
+})();
 </script>
 </body>
 </html>
