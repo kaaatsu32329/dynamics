@@ -1,8 +1,8 @@
-# 力学系ビジュアライザ（1 次元・2 次元 / Rust + WebAssembly）
+# 力学系ビジュアライザ（1 次元・2 次元・3 次元 / Rust + WebAssembly）
 
 ページは[こちら](https://kaaatsu32329.github.io/dynamics/)から。
 
-自励系の挙動をブラウザで可視化するワークスペース。ページ上部のタブで **1 次元** と **2 次元** を切り替えられる。
+自励系の挙動をブラウザで可視化するワークスペース。ページ上部のタブで **1 次元** / **2 次元** / **3 次元** を切り替えられる。
 
 **1 次元 `dx/dt = f(x)`** — 任意の関数 `f(x)` を文字列で与えると、
 **f(x) のグラフ・相直線（流れの向き）・固定点の安定性・時系列 x(t)** を描画する。
@@ -15,6 +15,10 @@
 **2 次元 `dx/dt = f(x,y), dy/dt = g(x,y)`** — 相平面に
 **ベクトル場・ヌルクライン（f=0 / g=0）・固定点（ヤコビアンの固有値で分類）・軌道** を描画し、
 粒子が流れに沿って動くアニメーションも再生できる。
+
+**3 次元 `dx/dt = f(x,y,z), dy/dt = g(x,y,z), dz/dt = h(x,y,z)`** — 相空間に
+**軌道（数値積分）・固定点（3×3 ヤコビアンの固有値で分類）** を描画する。
+ドラッグで視点を回転でき、粒子が流れるアニメーションも再生できる（例: Lorenz・Rössler・Chen・Thomas・Halvorsen）。
 
 ![bistable](gallery/bistable.png)
 
@@ -30,8 +34,8 @@
 **1 次元**のブラウザ版・CLI はいずれもこの同じコアを消費する薄い presentation 層で、
 数式パース・固定点検出・RK4 積分という本質ロジックは Rust(WASM) が実行し、描画（canvas）と UI のみが JavaScript。
 
-**2 次元タブ**はブラウザ内の自己完結 JavaScript（独自パーサ＋RK4＋ヤコビアンによる固定点分類）で実装しており、
-Rust クレートには依存しない（`web/index.html` 内）。
+**2 次元・3 次元タブ**はブラウザ内の自己完結 JavaScript（独自パーサ＋RK4＋ヤコビアンによる固定点分類、
+3 次元は固有値を解く 3×3 ヤコビアンと回転投影つき）で実装しており、Rust クレートには依存しない（`web/index.html` 内）。
 
 ## 使い方
 
@@ -60,10 +64,12 @@ Rust クレートには依存しない（`web/index.html` 内）。
 > `file://` で直接開くと ES モジュール/WASM の取得が CORS で失敗するため、HTTP 配信が必要。
 > `web/pkg/` は `build-web.sh`（= `cargo build --target wasm32-unknown-unknown` + `wasm-bindgen`）が生成する。
 
-ページ上部のタブで **1 次元 / 2 次元** を切り替えられる。2 次元は自励系
+ページ上部のタブで **1 次元 / 2 次元 / 3 次元** を切り替えられる。2 次元は自励系
 `dx/dt = f(x,y)`, `dy/dt = g(x,y)` の相平面で、ベクトル場・ヌルクライン・固定点
 （ヤコビアンの固有値で分類）・軌道を描画する（例: 減衰振り子・Van der Pol・Lotka-Volterra）。
-2 次元側は 1 次元に手を入れずに追加した自己完結 JS。
+3 次元は `dx/dt = f(x,y,z)`, `dy/dt = g(x,y,z)`, `dz/dt = h(x,y,z)` の相空間で、軌道と固定点
+（3×3 ヤコビアンの固有値で分類）を描画し、ドラッグで回転できる（例: Lorenz・Rössler・Chen・Thomas・Halvorsen）。
+2 次元・3 次元側は 1 次元に手を入れずに追加した自己完結 JS。
 
 ### CLI（静止画 / GIF）
 
@@ -88,7 +94,8 @@ cargo run -p dyn-cli -- "x*(1-x)" --gif -o logistic.gif --frames 120
 - 関数: `sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 log2 sqrt cbrt abs sign floor ceil round pow(a,b) atan2 min max mod`
 - 定数: `pi e tau`、変数: `x`、パラメータ: `p` `q` `r`（式に現れたものだけ調整可能）
 
-2 次元タブの式は変数 `x`, `y`（パラメータ非対応）。演算・関数・定数・暗黙の掛け算は同じ。
+2 次元タブの式は変数 `x`, `y`、3 次元タブの式は変数 `x`, `y`, `z`（いずれもパラメータ非対応）。
+演算・関数・定数・暗黙の掛け算は 1 次元と同じ。
 
 ## テスト
 

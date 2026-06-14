@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>力学系ビジュアライザ（1次元・2次元）</title>
+<title>力学系ビジュアライザ（1次元・2次元・3次元）</title>
 <style>
   :root{
     --flow-pos:#d1495b; --flow-neg:#2a6f97;
@@ -32,12 +32,12 @@
   .eqrow{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
   .eqrow label{font-weight:600; white-space:nowrap;}
   .eqrow .dxdt{font-family:Georgia,serif; font-style:italic; font-size:18px;}
-  #eq, #eqf, #eqg{
+  #eq, #eqf, #eqg, #eq3x, #eq3y, #eq3z{
     flex:1; min-width:220px; font-size:16px; padding:9px 12px;
     border:1px solid #cfd4da; border-radius:8px;
     font-family:"SF Mono",Menlo,Consolas,monospace;
   }
-  #eq:focus, #eqf:focus, #eqg:focus{outline:2px solid #4c6ef5; border-color:#4c6ef5;}
+  #eq:focus, #eqf:focus, #eqg:focus, #eq3x:focus, #eq3y:focus, #eq3z:focus{outline:2px solid #4c6ef5; border-color:#4c6ef5;}
   button{
     font:inherit; cursor:pointer; border:1px solid #cfd4da; background:#fff;
     padding:9px 14px; border-radius:8px; transition:.15s;
@@ -114,22 +114,24 @@
        color:#445; padding:9px 20px; border-radius:10px 10px 0 0; font-weight:600;}
   .tab:hover{background:#e2e8f5;}
   .tab.active{background:var(--panel); color:var(--ink);}
-  #error2{display:none; color:#9d0208; background:#fff0f0; border:1px solid #ffd0d0;
+  #error2,#error3{display:none; color:#9d0208; background:#fff0f0; border:1px solid #ffd0d0;
         padding:8px 12px; border-radius:8px; margin-top:10px; font-size:14px;}
-  #error2.on{display:block;}
+  #error2.on,#error3.on{display:block;}
+  #phase3{cursor:grab;} #phase3:active{cursor:grabbing;}
 </style>
 </head>
 <body>
 <header>
   <div class="wrap" style="padding-bottom:0;">
     <h1>力学系ビジュアライザ&nbsp; <span class="badge">Rust + WebAssembly</span></h1>
-    <p class="sub">自励系の挙動を可視化します。上のタブで <strong>1 次元</strong> <span class="eq">dx/dt = f(x)</span> と <strong>2 次元</strong> <span class="eq">dx/dt = f(x,y), dy/dt = g(x,y)</span> を切り替えられます。</p>
+    <p class="sub">自励系の挙動を可視化します。上のタブで <strong>1 次元</strong> <span class="eq">dx/dt = f(x)</span>、<strong>2 次元</strong> <span class="eq">dx/dt = f(x,y), dy/dt = g(x,y)</span>、<strong>3 次元</strong> <span class="eq">dx/dt = f(x,y,z), …</span> を切り替えられます。</p>
   </div>
 </header>
 
 <div class="tabs">
   <button class="tab active" data-view="view-1d">1次元　dx/dt = f(x)</button>
   <button class="tab" data-view="view-2d">2次元　(x, y) 相平面</button>
+  <button class="tab" data-view="view-3d">3次元　(x, y, z) 相空間</button>
 </div>
 
 <div class="wrap" id="view-1d">
@@ -275,6 +277,74 @@
     2 次元自励系 <code>dx/dt = f(x,y)</code>, <code>dy/dt = g(x,y)</code> の相平面。
     ベクトル場・ヌルクライン・固定点（ヤコビアンの固有値で分類）・軌道を描画します。
     記法は 1 次元と同じ（使える変数は <code>x</code> と <code>y</code>）。
+  </p>
+</div>
+
+<div class="wrap" id="view-3d" hidden>
+  <div class="controls">
+    <div class="eqrow">
+      <label class="dxdt">dx/dt&nbsp;=</label>
+      <input id="eq3x" value="10*(y - x)" spellcheck="false" placeholder="f(x, y, z)">
+      <button class="primary" tabindex="-1" aria-hidden="true" style="visibility:hidden">描画</button>
+    </div>
+    <div class="eqrow">
+      <label class="dxdt">dy/dt&nbsp;=</label>
+      <input id="eq3y" value="x*(28 - z) - y" spellcheck="false" placeholder="g(x, y, z)">
+      <button class="primary" tabindex="-1" aria-hidden="true" style="visibility:hidden">描画</button>
+    </div>
+    <div class="eqrow">
+      <label class="dxdt">dz/dt&nbsp;=</label>
+      <input id="eq3z" value="x*y - 2.6667*z" spellcheck="false" placeholder="h(x, y, z)">
+      <button class="primary" id="draw3">描画</button>
+    </div>
+    <div class="examples">
+      <span>例:</span>
+      <button class="chip" data-f="10*(y - x)" data-g="x*(28 - z) - y" data-h="x*y - 2.6667*z"
+        data-x="-25,25" data-y="-35,35" data-z="0,55">Lorenz</button>
+      <button class="chip" data-f="-y - z" data-g="x + 0.2*y" data-h="0.2 + z*(x - 5.7)"
+        data-x="-12,12" data-y="-12,8" data-z="0,25">Rössler</button>
+      <button class="chip" data-f="35*(y - x)" data-g="-7*x - x*z + 28*y" data-h="x*y - 3*z"
+        data-x="-30,30" data-y="-35,35" data-z="0,60">Chen</button>
+      <button class="chip" data-f="sin(y) - 0.19*x" data-g="sin(z) - 0.19*y" data-h="sin(x) - 0.19*z"
+        data-x="-6,6" data-y="-6,6" data-z="-6,6">Thomas</button>
+      <button class="chip" data-f="-1.4*x - 4*y - 4*z - y*y" data-g="-1.4*y - 4*z - 4*x - z*z" data-h="-1.4*z - 4*x - 4*y - x*x"
+        data-x="-14,8" data-y="-14,8" data-z="-14,8">Halvorsen</button>
+    </div>
+    <div class="params">
+      <div class="field"><label>x 範囲</label>
+        <input type="number" id="x3min" value="-25" step="1"><span>〜</span>
+        <input type="number" id="x3max" value="25" step="1"></div>
+      <div class="field"><label>y 範囲</label>
+        <input type="number" id="y3min" value="-35" step="1"><span>〜</span>
+        <input type="number" id="y3max" value="35" step="1"></div>
+      <div class="field"><label>z 範囲</label>
+        <input type="number" id="z3min" value="0" step="1"><span>〜</span>
+        <input type="number" id="z3max" value="55" step="1"></div>
+      <div class="field"><label>軌道数</label>
+        <input type="number" id="ntraj3" value="3" step="1" min="1" max="24"></div>
+    </div>
+    <div id="error3"></div>
+    <div class="anim">
+      <button id="play3">▶ アニメーション再生</button>
+      <button id="reset3">⟲ リセット</button>
+      <div class="speed"><label>速さ</label>
+        <input type="range" id="speed3" min="0.25" max="4" step="0.25" value="1" style="width:110px;"></div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <div class="it"><span class="dot st"></span>安定（沈点/渦状）</div>
+    <div class="it"><span class="dot un"></span>不安定（源点/渦状）</div>
+    <div class="it">◆ サドル　■ 退化（非双曲）</div>
+    <div class="it" style="color:#7a828c">ドラッグで回転</div>
+  </div>
+
+  <div class="card"><canvas id="phase3"></canvas></div>
+  <div id="info3"></div>
+  <p class="hint">
+    3 次元自励系 <code>dx/dt = f(x,y,z)</code>, <code>dy/dt = g(x,y,z)</code>, <code>dz/dt = h(x,y,z)</code> の相空間。
+    軌道（数値積分）と固定点（3×3 ヤコビアンの固有値で分類）を描画します。
+    キャンバスをドラッグすると視点を回転できます。記法は 1・2 次元と同じ（使える変数は <code>x</code>, <code>y</code>, <code>z</code>）。
   </p>
 </div>
 
@@ -820,14 +890,16 @@ init()
   const $ = id => document.getElementById(id);
 
   /* ---- tab switching ---- */
-  let drawn2 = false;
+  let drawn2 = false, drawn3 = false;
   document.querySelectorAll(".tab").forEach(tab=>{
     tab.addEventListener("click",()=>{
       document.querySelectorAll(".tab").forEach(t=>t.classList.toggle("active", t===tab));
       const v = tab.dataset.view;
       $("view-1d").hidden = v!=="view-1d";
       $("view-2d").hidden = v!=="view-2d";
+      $("view-3d").hidden = v!=="view-3d";
       if(v==="view-2d"){ draw2D(); drawn2=true; } else { stopAnim2(); }   // canvas needs to be visible to size
+      if(v==="view-3d"){ compute3(); drawn3=true; } else { stopAnim3(); }
     });
   });
 
@@ -1227,6 +1299,389 @@ init()
     $("eqf").value=b.dataset.f; $("eqg").value=b.dataset.g; draw2D();
   }));
   window.addEventListener("resize",()=>{ if(!$("view-2d").hidden) draw2D(); });
+
+  /* ================= 3D phase space (x, y, z) ================= */
+  /* mini parser for f(x,y,z): same grammar as the 2D one, with the variable z added */
+  function compile3(src){
+    const s=src, n=s.length; const toks=[]; let i=0;
+    const isd=c=>c>="0"&&c<="9", isa=c=>/[a-zA-Z_]/.test(c);
+    while(i<n){
+      const c=s[i];
+      if(c===" "||c==="\t"){i++;continue;}
+      if(isd(c)||(c==="."&&isd(s[i+1]))){
+        let j=i+1; while(j<n&&(isd(s[j])||s[j]==="."))j++;
+        if((s[j]==="e"||s[j]==="E")&&(isd(s[j+1])||((s[j+1]==="+"||s[j+1]==="-")&&isd(s[j+2])))){j+=2;while(j<n&&isd(s[j]))j++;}
+        toks.push({t:"num",v:parseFloat(s.slice(i,j))}); i=j; continue;
+      }
+      if(isa(c)){ let j=i+1; while(j<n&&/[a-zA-Z0-9_]/.test(s[j]))j++; const nm=s.slice(i,j).toLowerCase(); i=j;
+        toks.push((nm in F1)?{t:"f1",v:nm}:(nm in F2)?{t:"f2",v:nm}:{t:"name",v:nm}); continue; }
+      if("+-*/^(),".includes(c)){ toks.push({t:c}); i++; continue; }
+      throw new Error("認識できない文字: '"+c+"'");
+    }
+    const ve=t=>t&&(t.t==="num"||t.t==="name"||t.t===")");
+    const vs=t=>t&&(t.t==="num"||t.t==="name"||t.t==="f1"||t.t==="f2"||t.t==="(");
+    const tk=[]; for(const t of toks){ if(tk.length&&ve(tk[tk.length-1])&&vs(t)) tk.push({t:"*"}); tk.push(t); }
+    const out=[], op=[]; const prec={"+":2,"-":2,"*":3,"/":3,"^":4,u:3}; const right={"^":true,u:true};
+    let prev=false;
+    for(const t of tk){
+      if(t.t==="num"){ out.push(t); prev=true; }
+      else if(t.t==="name"){
+        if(t.v==="x") out.push({t:"x"});
+        else if(t.v==="y") out.push({t:"y"});
+        else if(t.v==="z") out.push({t:"z"});
+        else if(t.v in CONST) out.push({t:"num",v:CONST[t.v]});
+        else throw new Error("未知の変数: '"+t.v+"' (使えるのは x, y, z, pi, e)");
+        prev=true;
+      }
+      else if(t.t==="f1"||t.t==="f2"){ op.push(t); prev=false; }
+      else if(t.t===","){ while(op.length&&op[op.length-1].t!=="(") out.push(op.pop()); prev=false; }
+      else if("+-*/^".includes(t.t)){
+        let o=t.t;
+        if((o==="+"||o==="-")&&!prev){ if(o==="+"){prev=false;continue;} o="u"; }
+        while(op.length){ const tp=op[op.length-1]; if(tp.t==="(") break;
+          const p2=(tp.t==="f1"||tp.t==="f2")?9:prec[tp.t];
+          if(p2>prec[o]||(p2===prec[o]&&!right[o])) out.push(op.pop()); else break; }
+        op.push({t:o}); prev=false;
+      }
+      else if(t.t==="("){ op.push(t); prev=false; }
+      else if(t.t===")"){ while(op.length&&op[op.length-1].t!=="(") out.push(op.pop());
+        if(!op.length) throw new Error("括弧が対応していません"); op.pop();
+        if(op.length&&(op[op.length-1].t==="f1"||op[op.length-1].t==="f2")) out.push(op.pop()); prev=true; }
+    }
+    while(op.length){ const o=op.pop(); if(o.t==="(") throw new Error("括弧が対応していません"); out.push(o); }
+    if(!out.length) throw new Error("式が空です");
+    const fn=(x,y,z)=>{ const st=[]; let sp=0;
+      for(const o of out){ switch(o.t){
+        case "num": st[sp++]=o.v; break;
+        case "x": st[sp++]=x; break;
+        case "y": st[sp++]=y; break;
+        case "z": st[sp++]=z; break;
+        case "u": st[sp-1]=-st[sp-1]; break;
+        case "f1": st[sp-1]=F1[o.v](st[sp-1]); break;
+        case "f2": { const b=st[--sp]; st[sp-1]=F2[o.v](st[sp-1],b); break; }
+        default: { const b=st[--sp], a=st[sp-1];
+          st[sp-1]= o.t==="+"?a+b:o.t==="-"?a-b:o.t==="*"?a*b:o.t==="/"?a/b:Math.pow(a,b); }
+      } } return st[0]; };
+    fn(0.13,0.17,0.19); // validate
+    return fn;
+  }
+
+  /* ---- 3D numerics ---- */
+  function rk4_3(F,p,dt){
+    const a=F(p[0],p[1],p[2]);
+    const b=F(p[0]+0.5*dt*a[0],p[1]+0.5*dt*a[1],p[2]+0.5*dt*a[2]);
+    const c=F(p[0]+0.5*dt*b[0],p[1]+0.5*dt*b[1],p[2]+0.5*dt*b[2]);
+    const d=F(p[0]+dt*c[0],p[1]+dt*c[1],p[2]+dt*c[2]);
+    return [p[0]+dt*(a[0]+2*b[0]+2*c[0]+d[0])/6,
+            p[1]+dt*(a[1]+2*b[1]+2*c[1]+d[1])/6,
+            p[2]+dt*(a[2]+2*b[2]+2*c[2]+d[2])/6];
+  }
+  function jacobian3(F,x,y,z){ const h=1e-5; const d=(a,b)=>(a-b)/(2*h);
+    const px=F(x+h,y,z), mx=F(x-h,y,z), py=F(x,y+h,z), my=F(x,y-h,z), pz=F(x,y,z+h), mz=F(x,y,z-h);
+    return [[d(px[0],mx[0]),d(py[0],my[0]),d(pz[0],mz[0])],
+            [d(px[1],mx[1]),d(py[1],my[1]),d(pz[1],mz[1])],
+            [d(px[2],mx[2]),d(py[2],my[2]),d(pz[2],mz[2])]];
+  }
+  function det3(m){
+    return m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+         - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+         + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+  }
+  function newton3(F,x,y,z){
+    for(let k=0;k<60;k++){
+      const v=F(x,y,z), J=jacobian3(F,x,y,z), dj=det3(J);
+      if(!isFinite(dj)||Math.abs(dj)<1e-12) break;
+      // Cramer's rule: solve J·Δ = v
+      const ax=det3([[v[0],J[0][1],J[0][2]],[v[1],J[1][1],J[1][2]],[v[2],J[2][1],J[2][2]]])/dj;
+      const ay=det3([[J[0][0],v[0],J[0][2]],[J[1][0],v[1],J[1][2]],[J[2][0],v[2],J[2][2]]])/dj;
+      const az=det3([[J[0][0],J[0][1],v[0]],[J[1][0],J[1][1],v[1]],[J[2][0],J[2][1],v[2]]])/dj;
+      x-=ax; y-=ay; z-=az;
+      if(!isFinite(x)||!isFinite(y)||!isFinite(z)) return null;
+      if(Math.abs(ax)+Math.abs(ay)+Math.abs(az)<1e-10) break;
+    }
+    const v=F(x,y,z); return Math.hypot(v[0],v[1],v[2])<1e-6?[x,y,z]:null;
+  }
+  // real/complex roots of x^3 + b x^2 + c x + d = 0 -> [{re,im}, ...]
+  function cubicRoots(b,c,d){
+    const p=c-b*b/3, q=2*b*b*b/27-b*c/3+d, off=-b/3;
+    const disc=q*q/4+p*p*p/27, out=[];
+    if(disc>1e-12){ // one real, a complex-conjugate pair
+      const sq=Math.sqrt(disc), u=Math.cbrt(-q/2+sq), v=Math.cbrt(-q/2-sq), t=u+v, im=Math.sqrt(3)/2*(u-v);
+      out.push({re:t+off,im:0}); out.push({re:-t/2+off,im:im}); out.push({re:-t/2+off,im:-im});
+    } else if(p<-1e-12){ // three distinct real roots (trigonometric form)
+      const m=2*Math.sqrt(-p/3), phi=Math.acos(Math.max(-1,Math.min(1,-q/2/Math.sqrt(-p*p*p/27))));
+      out.push({re:m*Math.cos(phi/3)+off,im:0});
+      out.push({re:m*Math.cos((phi+2*Math.PI)/3)+off,im:0});
+      out.push({re:m*Math.cos((phi+4*Math.PI)/3)+off,im:0});
+    } else { // multiple real roots
+      const u=Math.cbrt(-q/2);
+      out.push({re:2*u+off,im:0}); out.push({re:-u+off,im:0}); out.push({re:-u+off,im:0});
+    }
+    return out;
+  }
+  function evString(eig){
+    const parts=[], used=eig.map(()=>false);
+    for(let i=0;i<eig.length;i++){ if(used[i]) continue;
+      if(Math.abs(eig[i].im)<1e-7){ parts.push(fmt(eig[i].re)); used[i]=true; }
+      else { parts.push(`${fmt(eig[i].re)} ± ${fmt(Math.abs(eig[i].im))}i`); used[i]=true;
+        for(let j=i+1;j<eig.length;j++) if(!used[j]&&Math.abs(eig[j].re-eig[i].re)<1e-6&&Math.abs(eig[j].im+eig[i].im)<1e-6){used[j]=true;break;} }
+    }
+    return parts.join(", ");
+  }
+  function classify3(F,x,y,z){
+    const J=jacobian3(F,x,y,z);
+    const jscale=Math.max(Math.abs(J[0][0]),Math.abs(J[0][1]),Math.abs(J[0][2]),
+                          Math.abs(J[1][0]),Math.abs(J[1][1]),Math.abs(J[1][2]),
+                          Math.abs(J[2][0]),Math.abs(J[2][1]),Math.abs(J[2][2]));
+    const tr=J[0][0]+J[1][1]+J[2][2];
+    const mnr=(J[1][1]*J[2][2]-J[1][2]*J[2][1])+(J[0][0]*J[2][2]-J[0][2]*J[2][0])+(J[0][0]*J[1][1]-J[0][1]*J[1][0]);
+    const eig=cubicRoots(-tr, mnr, -det3(J)); // char. poly λ³ - tr λ² + (Σminor) λ - det
+    const ev=evString(eig);
+    if(jscale<1e-7) return {kind:"degenerate",label:"退化（非双曲）",ev};
+    const eps=1e-6*jscale; let nPos=0,nNeg=0,nZero=0,hasC=false;
+    for(const e of eig){ if(Math.abs(e.im)>eps) hasC=true;
+      if(e.re>eps) nPos++; else if(e.re<-eps) nNeg++; else nZero++; }
+    if(nZero>0) return {kind:"degenerate",label:"退化（非双曲）",ev};         // zero real part: non-hyperbolic
+    if(nNeg===3) return {kind:"stable",  label:hasC?"安定（渦状）":"安定（沈点）",ev};
+    if(nPos===3) return {kind:"unstable",label:hasC?"不安定（渦状）":"不安定（源点）",ev};
+    return {kind:"saddle", label:hasC?"サドル（渦状）":"サドル",ev};            // mixed signs
+  }
+
+  /* ---- 3D camera / projection ---- */
+  const view3={yaw:0.7, pitch:0.42};
+  let S3=null;                       // cached scene: equations, trajectories, fixed points
+  function err3(msg){ const e=$("error3"); if(msg){e.textContent=msg;e.classList.add("on");}else e.classList.remove("on"); }
+
+  // orthographic projection of a data point: normalize to a unit cube, rotate (yaw, pitch), scale to fit
+  function makeProj3(view, S, area){
+    const ca=Math.cos(view.yaw), sa=Math.sin(view.yaw), cp=Math.cos(view.pitch), sp=Math.sin(view.pitch);
+    const rot=(nx,ny,nz)=>{ const x1=nx*ca-ny*sa, y1=nx*sa+ny*ca, z1=nz;
+      return [x1, y1*sp+z1*cp, y1*cp-z1*sp]; };  // [right, up, depth(+ = away)]
+    let mr=1e-6, mu=1e-6;
+    for(const ox of [-1,1])for(const oy of [-1,1])for(const oz of [-1,1]){
+      const r=rot(ox,oy,oz); mr=Math.max(mr,Math.abs(r[0])); mu=Math.max(mu,Math.abs(r[1])); }
+    const scale=Math.min((area.w/2)/mr,(area.h/2)/mu)*0.9;
+    const {cx,cy,cz,hx,hy,hz}=S;
+    const proj=(x,y,z)=>{ const r=rot((x-cx)/hx,(y-cy)/hy,(z-cz)/hz);
+      return [area.cx+r[0]*scale, area.cy-r[1]*scale, r[2]]; };
+    return {proj, scale};
+  }
+
+  function drawBox3(ctx, pr, S){
+    const R=S.ranges, xs=[R.xmin,R.xmax], ys=[R.ymin,R.ymax], zs=[R.zmin,R.zmax];
+    const C8=[[0,0,0],[1,0,0],[0,1,0],[1,1,0],[0,0,1],[1,0,1],[0,1,1],[1,1,1]];
+    const idx=(i,j,k)=>i+2*j+4*k;
+    const E=[[0,1],[0,2],[0,4],[1,3],[1,5],[2,3],[2,6],[3,7],[4,5],[4,6],[5,7],[6,7]];
+    const P=C8.map(c=>pr.proj(xs[c[0]],ys[c[1]],zs[c[2]]));
+    ctx.strokeStyle="#dde2e8"; ctx.lineWidth=1;
+    for(const [a,b] of E){ ctx.beginPath(); ctx.moveTo(P[a][0],P[a][1]); ctx.lineTo(P[b][0],P[b][1]); ctx.stroke(); }
+    // axis edges from the (min,min,min) corner, drawn stronger + labelled
+    const O=P[idx(0,0,0)];
+    const ends=[{p:P[idx(1,0,0)],t:"x"},{p:P[idx(0,1,0)],t:"y"},{p:P[idx(0,0,1)],t:"z"}];
+    ctx.strokeStyle="#aab4c0"; ctx.lineWidth=1.4;
+    for(const e of ends){ ctx.beginPath(); ctx.moveTo(O[0],O[1]); ctx.lineTo(e.p[0],e.p[1]); ctx.stroke(); }
+    ctx.fillStyle="#55606b"; ctx.font="bold 13px sans-serif"; ctx.textAlign="center"; ctx.textBaseline="middle";
+    for(const e of ends){ const dx=e.p[0]-O[0], dy=e.p[1]-O[1], L=Math.hypot(dx,dy)||1;
+      ctx.fillText(e.t, e.p[0]+dx/L*12, e.p[1]+dy/L*12); }
+  }
+
+  function drawFp3(ctx,cx,cy,kind){
+    if(kind==="saddle"){
+      ctx.fillStyle=C.saddle; ctx.strokeStyle="#fff"; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.moveTo(cx,cy-6); ctx.lineTo(cx+6,cy); ctx.lineTo(cx,cy+6); ctx.lineTo(cx-6,cy); ctx.closePath(); ctx.fill(); ctx.stroke();
+    } else if(kind==="degenerate"){
+      ctx.fillStyle=C.degenerate; ctx.strokeStyle="#fff"; ctx.lineWidth=1.5;
+      ctx.beginPath(); ctx.rect(cx-5,cy-5,10,10); ctx.fill(); ctx.stroke();
+    } else if(kind==="stable"){
+      ctx.fillStyle=C.stable; ctx.beginPath(); ctx.arc(cx,cy,5.5,0,7); ctx.fill();
+    } else {
+      ctx.fillStyle="#fff"; ctx.beginPath(); ctx.arc(cx,cy,5.5,0,7); ctx.fill();
+      ctx.lineWidth=2.2; ctx.strokeStyle=C.unstable; ctx.stroke();
+    }
+  }
+
+  function renderInfo3(){
+    const fps=S3?S3.fps:[];
+    const rows = fps.length ? fps.map(f=>{
+      const c = f.kind==="saddle"?C.saddle:f.kind==="degenerate"?C.degenerate:f.kind==="stable"?C.stable:C.unstable;
+      return `<tr><td><code>(${fmt(f.p[0])}, ${fmt(f.p[1])}, ${fmt(f.p[2])})</code></td>
+        <td style="color:${c};font-weight:600">${f.label}</td>
+        <td>λ = ${f.ev}</td></tr>`;
+    }).join("") : `<tr><td colspan="3" style="color:#8a93a0">この範囲に固定点はありません。</td></tr>`;
+    $("info3").innerHTML = `<h3>固定点と分類 (${fps.length} 個)</h3>
+      <table><thead><tr><th>位置 (x*, y*, z*)</th><th>種類</th><th>固有値</th></tr></thead>
+      <tbody>${rows}</tbody></table>
+      <div class="hint">3×3 ヤコビアンの固有値 λ で分類: 実部の符号が安定性、虚部があれば回転（渦状）。
+      符号が混在すればサドル、実部 0 を含むと退化（非双曲）。</div>`;
+  }
+
+  // Parse equations + ranges, integrate trajectories, find/classify fixed points. Heavy work happens here once.
+  function compute3(){
+    stopAnim3();
+    let F;
+    try{
+      const f=compile3($("eq3x").value.trim()), g=compile3($("eq3y").value.trim()), hh=compile3($("eq3z").value.trim());
+      F=(x,y,z)=>[f(x,y,z),g(x,y,z),hh(x,y,z)];
+    }catch(e){ err3("式を解釈できません: "+e.message); return null; }
+    const xmin=parseFloat($("x3min").value), xmax=parseFloat($("x3max").value);
+    const ymin=parseFloat($("y3min").value), ymax=parseFloat($("y3max").value);
+    const zmin=parseFloat($("z3min").value), zmax=parseFloat($("z3max").value);
+    if(!(xmax>xmin&&ymax>ymin&&zmax>zmin)){ err3("範囲が不正です (min < max)."); return null; }
+    err3(null);
+    const ranges={xmin,xmax,ymin,ymax,zmin,zmax};
+    const cx=(xmin+xmax)/2, cy=(ymin+ymax)/2, cz=(zmin+zmax)/2;
+    const hx=(xmax-xmin)/2, hy=(ymax-ymin)/2, hz=(zmax-zmin)/2;
+    const diag=Math.hypot(xmax-xmin,ymax-ymin,zmax-zmin);
+
+    // trajectories: forward integration with a speed-capped (adaptive) step
+    const nT=Math.max(1,Math.min(24,Math.round(parseFloat($("ntraj3").value)||3)));
+    const STEPS=4000, maxArc=diag*0.0045, escape=diag*0.6;
+    const traj=[], tcol=[];
+    for(let k=0;k<nT;k++){
+      const t=(k+0.5)/nT;
+      let p=[cx+hx*0.55*Math.cos(6.2831853*t*1.3+0.4),
+             cy+hy*0.55*Math.sin(6.2831853*t*1.7+1.1),
+             cz+hz*0.45*Math.cos(6.2831853*t*0.9+2.0)];
+      const pts=[p.slice()];
+      for(let s=0;s<STEPS;s++){
+        const v=F(p[0],p[1],p[2]), sp=Math.hypot(v[0],v[1],v[2]);
+        if(!isFinite(sp)) break;
+        const dt=sp<1e-9?maxArc:Math.min(0.015,maxArc/sp);
+        const np=rk4_3(F,p,dt);
+        if(!isFinite(np[0])||!isFinite(np[1])||!isFinite(np[2])) break;
+        if(Math.abs(np[0]-cx)>hx+escape||Math.abs(np[1]-cy)>hy+escape||Math.abs(np[2]-cz)>hz+escape){ pts.push(np); break; }
+        const moved=Math.abs(np[0]-p[0])+Math.abs(np[1]-p[1])+Math.abs(np[2]-p[2]);
+        p=np; pts.push(p.slice());
+        if(moved<diag*1e-6) break; // converged to a fixed point
+      }
+      traj.push(pts); tcol.push(viridis(nT<2?0.62:k/(nT-1)));
+    }
+
+    // fixed points: Newton from a seed grid, dedup, classify
+    const fps=[], tol=diag*0.02, ng=4, pad=diag*0.03;
+    for(let i=0;i<=ng;i++)for(let j=0;j<=ng;j++)for(let l=0;l<=ng;l++){
+      const r=newton3(F, xmin+(xmax-xmin)*i/ng, ymin+(ymax-ymin)*j/ng, zmin+(zmax-zmin)*l/ng);
+      if(!r) continue;
+      if(r[0]<xmin-pad||r[0]>xmax+pad||r[1]<ymin-pad||r[1]>ymax+pad||r[2]<zmin-pad||r[2]>zmax+pad) continue;
+      if(fps.some(q=>Math.hypot(q.p[0]-r[0],q.p[1]-r[1],q.p[2]-r[2])<tol)) continue;
+      const c=classify3(F,r[0],r[1],r[2]);
+      fps.push({p:r, kind:c.kind, label:c.label, ev:c.ev});
+    }
+    S3={F, ranges, cx,cy,cz, hx,hy,hz, traj, tcol, fps};
+    render3();
+    return S3;
+  }
+
+  // Re-project the cached scene for the current view. Cheap: called on every rotate/resize.
+  function render3(opts){
+    opts=opts||{};
+    if(!S3) return null;
+    const {ctx,w,h}=setupCanvas($("phase3"), 560);
+    ctx.clearRect(0,0,w,h);
+    const M={l:16,r:16,t:16,b:16};
+    const area={w:w-M.l-M.r, h:h-M.t-M.b, cx:M.l+(w-M.l-M.r)/2, cy:M.t+(h-M.t-M.b)/2};
+    const pr=makeProj3(view3, S3, area);
+    const R=S3.ranges;
+
+    // axis ranges (always readable, independent of rotation)
+    ctx.font="12px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.fillStyle="#8a93a0";
+    ctx.fillText(`x ∈ [${fmt(R.xmin)}, ${fmt(R.xmax)}]`, M.l+4, M.t+2);
+    ctx.fillText(`y ∈ [${fmt(R.ymin)}, ${fmt(R.ymax)}]`, M.l+4, M.t+18);
+    ctx.fillText(`z ∈ [${fmt(R.zmin)}, ${fmt(R.zmax)}]`, M.l+4, M.t+34);
+
+    drawBox3(ctx, pr, S3);
+
+    // trajectories (drawn faint as the backdrop while animating; the moving markers run along these)
+    {
+      ctx.lineJoin="round"; ctx.lineCap="round";
+      const al = opts.dim ? 0.3 : 0.82;
+      for(let k=0;k<S3.traj.length;k++){
+        const pts=S3.traj[k]; if(pts.length<2) continue;
+        ctx.strokeStyle=S3.tcol[k]; ctx.lineWidth=1.1; ctx.globalAlpha=al; ctx.beginPath();
+        for(let s=0;s<pts.length;s++){ const q=pr.proj(pts[s][0],pts[s][1],pts[s][2]); s?ctx.lineTo(q[0],q[1]):ctx.moveTo(q[0],q[1]); }
+        ctx.stroke();
+      }
+      ctx.globalAlpha=1;
+    }
+
+    // fixed points (far -> near, so nearer markers draw on top)
+    const order=S3.fps.map((f,k)=>({k,d:pr.proj(f.p[0],f.p[1],f.p[2])[2]})).sort((a,b)=>b.d-a.d);
+    for(const o of order){ const f=S3.fps[o.k], q=pr.proj(f.p[0],f.p[1],f.p[2]); drawFp3(ctx,q[0],q[1],f.kind); }
+
+    renderInfo3();
+    return {pr, cv:$("phase3"), w, h, M, area};
+  }
+
+  /* ---- 3D animation: a marker travels along each *initial* trajectory (same path & colour) ---- */
+  const anim3={on:false,raf:0,last:0,parts:[],geom:null,bg:null};
+  function stopAnim3(){ anim3.on=false; cancelAnimationFrame(anim3.raf);
+    const b=$("play3"); if(b) b.textContent="▶ アニメーション再生"; }
+  function startAnim3(){
+    if(!S3 && !compute3()) return;
+    const g=render3({dim:true}); if(!g) return;   // backdrop = box + fixed points + faint initial trajectories
+    anim3.geom=g; anim3.bg=snapshot(g.cv);
+    // one moving marker per initial trajectory, travelling along that exact stored path
+    anim3.parts=S3.traj.map((pts,k)=>({k, t:Math.random()*Math.max(1,pts.length-1), col:S3.tcol[k]}));
+    anim3.on=true; anim3.last=performance.now(); $("play3").textContent="❚❚ 一時停止";
+    anim3.raf=requestAnimationFrame(step3);
+  }
+  function step3(now){
+    if(!anim3.on) return;
+    const g=anim3.geom, pr=g.pr;
+    const dtS=Math.min(0.1,(now-anim3.last)/1000); anim3.last=now;
+    const advance=dtS*parseFloat($("speed3").value)*220;   // trajectory points advanced this frame
+    const ctx=g.cv.getContext("2d");
+    ctx.save(); ctx.setTransform(1,0,0,1,0,0); ctx.drawImage(anim3.bg,0,0); ctx.restore();
+    ctx.lineJoin="round"; ctx.lineCap="round";
+    const TAIL=42;
+    for(const p of anim3.parts){
+      const pts=S3.traj[p.k], N=pts.length; if(N<2) continue;
+      p.t+=advance; while(p.t>=N-1) p.t-=(N-1);             // loop along the trajectory
+      const idx=Math.floor(p.t), s0=Math.max(0,idx-TAIL);
+      // past trail: a thin continuous line only (no per-point dots)
+      ctx.strokeStyle=p.col; ctx.lineWidth=1.6; ctx.globalAlpha=0.9; ctx.beginPath();
+      for(let s=s0;s<=idx;s++){ const q=pr.proj(pts[s][0],pts[s][1],pts[s][2]); s===s0?ctx.moveTo(q[0],q[1]):ctx.lineTo(q[0],q[1]); }
+      ctx.stroke();
+      // current position: a small dot kept within the line thickness (no large/bumpy marker)
+      const hq=pr.proj(pts[idx][0],pts[idx][1],pts[idx][2]);
+      ctx.globalAlpha=1; ctx.fillStyle=p.col; ctx.beginPath(); ctx.arc(hq[0],hq[1],0.9,0,7); ctx.fill();
+    }
+    ctx.globalAlpha=1;
+    anim3.raf=requestAnimationFrame(step3);
+  }
+
+  /* ---- 3D events ---- */
+  $("draw3").addEventListener("click",compute3);
+  ["eq3x","eq3y","eq3z"].forEach(id=>$(id).addEventListener("keydown",e=>{ if(e.key==="Enter") compute3(); }));
+  ["x3min","x3max","y3min","y3max","z3min","z3max","ntraj3"].forEach(id=>$(id).addEventListener("change",compute3));
+  $("play3").addEventListener("click",()=>{ if(anim3.on) stopAnim3(); else startAnim3(); });
+  $("reset3").addEventListener("click",()=>{ stopAnim3(); compute3(); });
+  document.querySelectorAll("#view-3d .chip").forEach(b=>b.addEventListener("click",()=>{
+    $("eq3x").value=b.dataset.f; $("eq3y").value=b.dataset.g; $("eq3z").value=b.dataset.h;
+    const setR=(attr,a,b2)=>{ const v=(b.dataset[attr]||"").split(","); if(v.length===2){ $(a).value=v[0].trim(); $(b2).value=v[1].trim(); } };
+    setR("x","x3min","x3max"); setR("y","y3min","y3max"); setR("z","z3min","z3max");
+    compute3();
+  }));
+  // re-render for the current view: while animating, refresh the (dimmed) backdrop snapshot so the
+  // running animation keeps drawing over the correct viewpoint instead of being stopped.
+  function reproject3(){
+    if(anim3.on){ const g=render3({dim:true}); if(g){ anim3.geom=g; anim3.bg=snapshot(g.cv); } }
+    else render3();
+  }
+  // drag to rotate the view
+  let drag3=null;
+  $("phase3").addEventListener("mousedown",e=>{ drag3={x:e.clientX,y:e.clientY,yaw:view3.yaw,pitch:view3.pitch}; e.preventDefault(); });
+  window.addEventListener("mousemove",e=>{ if(!drag3) return;
+    view3.yaw=drag3.yaw+(e.clientX-drag3.x)*0.01;
+    view3.pitch=Math.max(-1.5,Math.min(1.5,drag3.pitch-(e.clientY-drag3.y)*0.01));
+    reproject3(); });
+  window.addEventListener("mouseup",()=>{ drag3=null; });
+  $("phase3").addEventListener("touchstart",e=>{ if(e.touches.length){ const t=e.touches[0]; drag3={x:t.clientX,y:t.clientY,yaw:view3.yaw,pitch:view3.pitch}; } },{passive:true});
+  $("phase3").addEventListener("touchmove",e=>{ if(!drag3||!e.touches.length) return; const t=e.touches[0];
+    view3.yaw=drag3.yaw+(t.clientX-drag3.x)*0.01; view3.pitch=Math.max(-1.5,Math.min(1.5,drag3.pitch-(t.clientY-drag3.y)*0.01));
+    reproject3(); e.preventDefault(); },{passive:false});
+  $("phase3").addEventListener("touchend",()=>{ drag3=null; });
+  window.addEventListener("resize",()=>{ if(!$("view-3d").hidden) reproject3(); });
 })();
 </script>
 </body>
