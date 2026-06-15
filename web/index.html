@@ -103,6 +103,9 @@
   .hint{color:var(--muted); font-size:12.5px; margin-top:8px;}
   .badge{font-size:11px; color:#2b6cb0; background:#e7f0ff; border:1px solid #cfe0ff;
         border-radius:10px; padding:1px 8px; margin-left:8px; vertical-align:middle;}
+  .langbtn{float:right; font:inherit; font-size:13px; cursor:pointer; margin-top:4px;
+        border:1px solid #cfd4da; background:#fff; color:#445; padding:5px 12px; border-radius:8px;}
+  .langbtn:hover{background:#f1f4fa;}
   #bifcard{display:none; margin-top:14px;}
   .bifhead{display:flex; gap:14px; align-items:center; flex-wrap:wrap;
         margin:2px 6px 6px; font-size:13px; color:#334;}
@@ -121,17 +124,42 @@
 </style>
 </head>
 <body>
+<script>
+/* ---- minimal i18n: ja (source) / en. JS strings use i18n.t(ja,en); static markup uses data-en* attrs. ---- */
+window.i18n = {
+  lang: (localStorage.getItem('lang')==='en') ? 'en' : 'ja',
+  titleEn: "Dynamical Systems Visualizer (1D / 2D / 3D)",
+  _jatitle: document.title,
+  t(ja,en){ return this.lang==='en' ? en : ja; },
+  apply(){
+    const en=this.lang==='en';
+    document.querySelectorAll('[data-en]').forEach(el=>{ if(el._ja==null) el._ja=el.textContent; el.textContent = en?el.getAttribute('data-en'):el._ja; });
+    document.querySelectorAll('[data-en-html]').forEach(el=>{ if(el._jah==null) el._jah=el.innerHTML; el.innerHTML = en?el.getAttribute('data-en-html'):el._jah; });
+    document.querySelectorAll('[data-en-ph]').forEach(el=>{ if(el._jap==null) el._jap=el.getAttribute('placeholder')||''; el.setAttribute('placeholder', en?el.getAttribute('data-en-ph'):el._jap); });
+    document.title = en?this.titleEn:this._jatitle;
+    document.documentElement.lang = en?'en':'ja';
+    const b=document.getElementById('langtoggle'); if(b) b.textContent = en?'日本語':'English';
+  },
+  set(l){ this.lang=(l==='en')?'en':'ja'; localStorage.setItem('lang',this.lang); this.apply(); window.dispatchEvent(new Event('langchange')); }
+};
+document.addEventListener('DOMContentLoaded',()=>{
+  const b=document.getElementById('langtoggle');
+  if(b) b.addEventListener('click',()=> window.i18n.set(window.i18n.lang==='en'?'ja':'en'));
+  window.i18n.apply();
+});
+</script>
 <header>
   <div class="wrap" style="padding-bottom:0;">
-    <h1>力学系ビジュアライザ&nbsp; <span class="badge">Rust + WebAssembly</span></h1>
-    <p class="sub">自励系の挙動を可視化します。上のタブで <strong>1 次元</strong> <span class="eq">dx/dt = f(x)</span>、<strong>2 次元</strong> <span class="eq">dx/dt = f(x,y), dy/dt = g(x,y)</span>、<strong>3 次元</strong> <span class="eq">dx/dt = f(x,y,z), …</span> を切り替えられます。</p>
+    <button id="langtoggle" class="langbtn" type="button">English</button>
+    <h1 data-en-html='Dynamical Systems Visualizer&nbsp; <span class="badge">Rust + WebAssembly</span>'>力学系ビジュアライザ&nbsp; <span class="badge">Rust + WebAssembly</span></h1>
+    <p class="sub" data-en-html='Visualize the behavior of autonomous systems. Use the tabs above to switch between <strong>1D</strong> <span class="eq">dx/dt = f(x)</span>, <strong>2D</strong> <span class="eq">dx/dt = f(x,y), dy/dt = g(x,y)</span>, and <strong>3D</strong> <span class="eq">dx/dt = f(x,y,z), …</span>.'>自励系の挙動を可視化します。上のタブで <strong>1 次元</strong> <span class="eq">dx/dt = f(x)</span>、<strong>2 次元</strong> <span class="eq">dx/dt = f(x,y), dy/dt = g(x,y)</span>、<strong>3 次元</strong> <span class="eq">dx/dt = f(x,y,z), …</span> を切り替えられます。</p>
   </div>
 </header>
 
 <div class="tabs">
-  <button class="tab active" data-view="view-1d">1次元　(x) 相直線</button>
-  <button class="tab" data-view="view-2d">2次元　(x, y) 相平面</button>
-  <button class="tab" data-view="view-3d">3次元　(x, y, z) 相空間</button>
+  <button class="tab active" data-view="view-1d" data-en="1D　(x) phase line">1次元　(x) 相直線</button>
+  <button class="tab" data-view="view-2d" data-en="2D　(x, y) phase plane">2次元　(x, y) 相平面</button>
+  <button class="tab" data-view="view-3d" data-en="3D　(x, y, z) phase space">3次元　(x, y, z) 相空間</button>
 </div>
 
 <div class="wrap" id="view-1d">
@@ -139,11 +167,12 @@
     <div class="eqrow">
       <label class="dxdt">dx/dt&nbsp;=</label>
       <input id="eq" value="x*(1 - x)" spellcheck="false"
-             placeholder="例:  x - x^3,   r - x^2,   sin(x),   x*(1-x)">
-      <button class="primary" id="draw">描画</button>
+             placeholder="例:  x - x^3,   r - x^2,   sin(x),   x*(1-x)"
+             data-en-ph="e.g.  x - x^3,   r - x^2,   sin(x),   x*(1-x)">
+      <button class="primary" id="draw" data-en="Draw">描画</button>
     </div>
     <div class="examples">
-      <span>例:</span>
+      <span data-en="Examples:">例:</span>
       <button class="chip" data-eq="-x">-x</button>
       <button class="chip" data-eq="x*(1 - x)">x(1-x)</button>
       <button class="chip" data-eq="x - x^3">x - x³</button>
@@ -155,47 +184,47 @@
       <button class="chip" data-eq="x*(1 - x)*(x - 0.3)">x(1-x)(x-0.3)</button>
     </div>
     <div class="params">
-      <div class="field"><label>x 範囲</label>
+      <div class="field"><label data-en="x range">x 範囲</label>
         <input type="number" id="xmin" value="-2" step="0.5">
         <span>〜</span>
         <input type="number" id="xmax" value="2" step="0.5"></div>
-      <div class="field"><label>時間 t<sub>max</sub></label>
+      <div class="field"><label data-en-html="time t<sub>max</sub>">時間 t<sub>max</sub></label>
         <input type="number" id="tmax" value="8" step="1" min="1" max="1000"></div>
-      <div class="field"><label>軌道数</label>
+      <div class="field"><label data-en="# trajectories">軌道数</label>
         <input type="number" id="nic" value="15" step="1" min="2" max="60"></div>
     </div>
     <div class="paramrow" id="paramrow">
       <div id="pwrap" class="pwrap">
-        <label>パラメータ p</label>
+        <label data-en="parameter p">パラメータ p</label>
         <input type="range" id="prange" min="-3" max="3" step="0.01" value="0">
         <input type="number" id="pnum" step="0.1" value="0">
       </div>
       <div id="qwrap" class="pwrap">
-        <label>パラメータ q</label>
+        <label data-en="parameter q">パラメータ q</label>
         <input type="range" id="qrange" min="-3" max="3" step="0.01" value="1">
         <input type="number" id="qnum" step="0.1" value="1">
       </div>
       <div id="rwrap" class="pwrap">
-        <label>パラメータ r</label>
+        <label data-en="parameter r">パラメータ r</label>
         <input type="range" id="rrange" min="-3" max="3" step="0.01" value="0">
         <input type="number" id="rnum" step="0.1" value="0">
       </div>
     </div>
     <div id="error"></div>
     <div class="anim">
-      <button id="play">▶ アニメーション再生</button>
-      <button id="reset">⟲ リセット</button>
-      <div class="speed"><label>速さ</label>
+      <button id="play" data-en="▶ Play animation">▶ アニメーション再生</button>
+      <button id="reset" data-en="⟲ Reset">⟲ リセット</button>
+      <div class="speed"><label data-en="Speed">速さ</label>
         <input type="range" id="speed" min="0.25" max="4" step="0.25" value="1"
                style="width:110px;"></div>
     </div>
   </div>
 
   <div class="legend">
-    <div class="it"><span class="dot st"></span>安定固定点 (f′&lt;0)</div>
-    <div class="it"><span class="dot un"></span>不安定固定点 (f′&gt;0)</div>
-    <div class="it"><span class="bar" style="background:var(--flow-pos)"></span>増加方向の流れ (f&gt;0)</div>
-    <div class="it"><span class="bar" style="background:var(--flow-neg)"></span>減少方向の流れ (f&lt;0)</div>
+    <div class="it"><span class="dot st"></span><span data-en="stable fixed point (f′&lt;0)">安定固定点 (f′&lt;0)</span></div>
+    <div class="it"><span class="dot un"></span><span data-en="unstable fixed point (f′&gt;0)">不安定固定点 (f′&gt;0)</span></div>
+    <div class="it"><span class="bar" style="background:var(--flow-pos)"></span><span data-en="flow increasing (f&gt;0)">増加方向の流れ (f&gt;0)</span></div>
+    <div class="it"><span class="bar" style="background:var(--flow-neg)"></span><span data-en="flow decreasing (f&lt;0)">減少方向の流れ (f&lt;0)</span></div>
   </div>
 
   <div class="plots">
@@ -205,18 +234,18 @@
 
   <div class="card" id="bifcard">
     <div class="bifhead">
-      <strong>分岐図</strong>
-      <span id="bifselwrap">掃引するパラメータ:
+      <strong data-en="Bifurcation diagram">分岐図</strong>
+      <span id="bifselwrap"><span data-en="sweep parameter:">掃引するパラメータ:</span>
         <select id="bifparam"></select>
       </span>
-      <span class="note">実線 = 安定 / 破線 = 不安定。縦の点線 = 現在のパラメータ値。</span>
+      <span class="note" data-en="solid = stable / dashed = unstable. vertical dotted line = current parameter value.">実線 = 安定 / 破線 = 不安定。縦の点線 = 現在のパラメータ値。</span>
     </div>
     <canvas id="bif"></canvas>
   </div>
 
   <div id="info"></div>
 
-  <p class="hint">
+  <p class="hint" data-en-html='Operators: arithmetic <code>+ - * /</code>, power <code>^</code>, parentheses, implicit multiplication <code>x(1-x)</code>. Functions: <code>sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 sqrt cbrt abs sign pow(a,b)</code>. Constants: <code>pi e</code>. In addition to the variable <code>x</code>, including parameters <code>p</code> <code>q</code> <code>r</code> makes a slider appear for each, letting you observe bifurcations (creation and annihilation of fixed points).'>
     使える記号: 四則演算 <code>+ - * /</code>、べき乗 <code>^</code>、括弧、暗黙の掛け算 <code>x(1-x)</code>。
     関数: <code>sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 sqrt cbrt abs sign pow(a,b)</code>。
     定数: <code>pi e</code>。 変数 <code>x</code> に加え、パラメータ <code>p</code> <code>q</code> <code>r</code> を含めると各スライダーが現れ、分岐（固定点の生成・消滅）を観察できます。
@@ -233,47 +262,47 @@
     <div class="eqrow">
       <label class="dxdt">dy/dt&nbsp;=</label>
       <input id="eqg" value="-sin(x) - 0.3*y" spellcheck="false" placeholder="g(x, y)">
-      <button class="primary" id="draw2">描画</button>
+      <button class="primary" id="draw2" data-en="Draw">描画</button>
     </div>
     <div class="examples">
-      <span>例:</span>
-      <button class="chip" data-f="y" data-g="-sin(x) - 0.3*y">減衰振り子</button>
-      <button class="chip" data-f="y" data-g="-x">単振動 (中心)</button>
-      <button class="chip" data-f="x" data-g="-y">サドル</button>
-      <button class="chip" data-f="-x - y" data-g="x - y">安定渦</button>
+      <span data-en="Examples:">例:</span>
+      <button class="chip" data-f="y" data-g="-sin(x) - 0.3*y" data-en="Damped pendulum">減衰振り子</button>
+      <button class="chip" data-f="y" data-g="-x" data-en="Harmonic (center)">単振動 (中心)</button>
+      <button class="chip" data-f="x" data-g="-y" data-en="Saddle">サドル</button>
+      <button class="chip" data-f="-x - y" data-g="x - y" data-en="Stable spiral">安定渦</button>
       <button class="chip" data-f="y" data-g="(1 - x*x)*y - x">Van der Pol</button>
       <button class="chip" data-f="x - x*y" data-g="x*y - y">Lotka-Volterra</button>
     </div>
     <div class="params">
-      <div class="field"><label>x 範囲</label>
+      <div class="field"><label data-en="x range">x 範囲</label>
         <input type="number" id="x2min" value="-3" step="0.5"><span>〜</span>
         <input type="number" id="x2max" value="3" step="0.5"></div>
-      <div class="field"><label>y 範囲</label>
+      <div class="field"><label data-en="y range">y 範囲</label>
         <input type="number" id="y2min" value="-3" step="0.5"><span>〜</span>
         <input type="number" id="y2max" value="3" step="0.5"></div>
-      <div class="field"><label>軌道数</label>
+      <div class="field"><label data-en="# trajectories">軌道数</label>
         <input type="number" id="ntraj2" value="36" step="1" min="4" max="400"></div>
     </div>
     <div id="error2"></div>
     <div class="anim">
-      <button id="play2">▶ アニメーション再生</button>
-      <button id="reset2">⟲ リセット</button>
-      <div class="speed"><label>速さ</label>
+      <button id="play2" data-en="▶ Play animation">▶ アニメーション再生</button>
+      <button id="reset2" data-en="⟲ Reset">⟲ リセット</button>
+      <div class="speed"><label data-en="Speed">速さ</label>
         <input type="range" id="speed2" min="0.25" max="4" step="0.25" value="1" style="width:110px;"></div>
     </div>
   </div>
 
   <div class="legend">
-    <div class="it"><span class="bar" style="background:var(--flow-pos)"></span>x ヌルクライン (f=0)</div>
-    <div class="it"><span class="bar" style="background:var(--flow-neg)"></span>y ヌルクライン (g=0)</div>
-    <div class="it"><span class="dot st"></span>安定 (node/spiral)</div>
-    <div class="it"><span class="dot un"></span>不安定 (node/spiral)</div>
-    <div class="it">◆ サドル　○ 中心　■ 退化（非双曲）</div>
+    <div class="it"><span class="bar" style="background:var(--flow-pos)"></span><span data-en="x nullcline (f=0)">x ヌルクライン (f=0)</span></div>
+    <div class="it"><span class="bar" style="background:var(--flow-neg)"></span><span data-en="y nullcline (g=0)">y ヌルクライン (g=0)</span></div>
+    <div class="it"><span class="dot st"></span><span data-en="stable (node/spiral)">安定 (node/spiral)</span></div>
+    <div class="it"><span class="dot un"></span><span data-en="unstable (node/spiral)">不安定 (node/spiral)</span></div>
+    <div class="it" data-en="◆ Saddle　○ Center　■ Degenerate (non-hyperbolic)">◆ サドル　○ 中心　■ 退化（非双曲）</div>
   </div>
 
   <div class="card"><canvas id="phase2"></canvas></div>
   <div id="info2"></div>
-  <p class="hint">
+  <p class="hint" data-en-html='Phase plane of the 2D autonomous system <code>dx/dt = f(x,y)</code>, <code>dy/dt = g(x,y)</code>. Draws the vector field, nullclines, fixed points (classified by the Jacobian eigenvalues), and trajectories. Same syntax as 1D (variables <code>x</code> and <code>y</code>).'>
     2 次元自励系 <code>dx/dt = f(x,y)</code>, <code>dy/dt = g(x,y)</code> の相平面。
     ベクトル場・ヌルクライン・固定点（ヤコビアンの固有値で分類）・軌道を描画します。
     記法は 1 次元と同じ（使える変数は <code>x</code> と <code>y</code>）。
@@ -295,10 +324,10 @@
     <div class="eqrow">
       <label class="dxdt">dz/dt&nbsp;=</label>
       <input id="eq3z" value="x*y - 2.6667*z" spellcheck="false" placeholder="h(x, y, z)">
-      <button class="primary" id="draw3">描画</button>
+      <button class="primary" id="draw3" data-en="Draw">描画</button>
     </div>
     <div class="examples">
-      <span>例:</span>
+      <span data-en="Examples:">例:</span>
       <button class="chip" data-f="10*(y - x)" data-g="x*(28 - z) - y" data-h="x*y - 2.6667*z"
         data-x="-25,25" data-y="-35,35" data-z="0,55">Lorenz</button>
       <button class="chip" data-f="-y - z" data-g="x + 0.2*y" data-h="0.2 + z*(x - 5.7)"
@@ -311,37 +340,37 @@
         data-x="-14,8" data-y="-14,8" data-z="-14,8">Halvorsen</button>
     </div>
     <div class="params">
-      <div class="field"><label>x 範囲</label>
+      <div class="field"><label data-en="x range">x 範囲</label>
         <input type="number" id="x3min" value="-25" step="1"><span>〜</span>
         <input type="number" id="x3max" value="25" step="1"></div>
-      <div class="field"><label>y 範囲</label>
+      <div class="field"><label data-en="y range">y 範囲</label>
         <input type="number" id="y3min" value="-35" step="1"><span>〜</span>
         <input type="number" id="y3max" value="35" step="1"></div>
-      <div class="field"><label>z 範囲</label>
+      <div class="field"><label data-en="z range">z 範囲</label>
         <input type="number" id="z3min" value="0" step="1"><span>〜</span>
         <input type="number" id="z3max" value="55" step="1"></div>
-      <div class="field"><label>軌道数</label>
+      <div class="field"><label data-en="# trajectories">軌道数</label>
         <input type="number" id="ntraj3" value="3" step="1" min="1" max="24"></div>
     </div>
     <div id="error3"></div>
     <div class="anim">
-      <button id="play3">▶ アニメーション再生</button>
-      <button id="reset3">⟲ リセット</button>
-      <div class="speed"><label>速さ</label>
+      <button id="play3" data-en="▶ Play animation">▶ アニメーション再生</button>
+      <button id="reset3" data-en="⟲ Reset">⟲ リセット</button>
+      <div class="speed"><label data-en="Speed">速さ</label>
         <input type="range" id="speed3" min="0.25" max="4" step="0.25" value="1" style="width:110px;"></div>
     </div>
   </div>
 
   <div class="legend">
-    <div class="it"><span class="dot st"></span>安定（沈点/渦状）</div>
-    <div class="it"><span class="dot un"></span>不安定（源点/渦状）</div>
-    <div class="it">◆ サドル　■ 退化（非双曲）</div>
-    <div class="it" style="color:#7a828c">ドラッグで回転</div>
+    <div class="it"><span class="dot st"></span><span data-en="stable (sink/spiral)">安定（沈点/渦状）</span></div>
+    <div class="it"><span class="dot un"></span><span data-en="unstable (source/spiral)">不安定（源点/渦状）</span></div>
+    <div class="it" data-en="◆ Saddle　■ Degenerate (non-hyperbolic)">◆ サドル　■ 退化（非双曲）</div>
+    <div class="it" style="color:#7a828c" data-en="Drag to rotate">ドラッグで回転</div>
   </div>
 
   <div class="card"><canvas id="phase3"></canvas></div>
   <div id="info3"></div>
-  <p class="hint">
+  <p class="hint" data-en-html='Phase space of the 3D autonomous system <code>dx/dt = f(x,y,z)</code>, <code>dy/dt = g(x,y,z)</code>, <code>dz/dt = h(x,y,z)</code>. Draws trajectories (numerically integrated) and fixed points (classified by the eigenvalues of the 3×3 Jacobian). Drag the canvas to rotate the view. Same syntax as 1D/2D (variables <code>x</code>, <code>y</code>, <code>z</code>).'>
     3 次元自励系 <code>dx/dt = f(x,y,z)</code>, <code>dy/dt = g(x,y,z)</code>, <code>dz/dt = h(x,y,z)</code> の相空間。
     軌道（数値積分）と固定点（3×3 ヤコビアンの固有値で分類）を描画します。
     キャンバスをドラッグすると視点を回転できます。記法は 1・2 次元と同じ（使える変数は <code>x</code>, <code>y</code>, <code>z</code>）。
@@ -350,6 +379,9 @@
 
 <script type="module">
 import init, { WasmModel } from "./pkg/dyn_wasm.js";
+
+/* ====== i18n shorthand: T(ja, en) returns the current-language string ====== */
+const T = (ja, en) => window.i18n.t(ja, en);
 
 /* ====== Colors (match the CSS) ====== */
 const C = {
@@ -430,12 +462,12 @@ function buildModel(){
   const xmin=parseFloat($("xmin").value), xmax=parseFloat($("xmax").value);
   const tmax=Math.min(1000,Math.max(1,parseFloat($("tmax").value)||8));
   const nic=Math.max(2,Math.min(60,parseInt($("nic").value)||15));
-  if(!(xmax>xmin)){ showError("x 範囲が不正です (min < max)."); return null; }
+  if(!(xmax>xmin)){ showError(T("x 範囲が不正です (min < max).","Invalid x range (min < max).")); return null; }
   const pv=paramValues();   // [p, q, r]
 
   let wm;
   try{ wm = WasmModel.build(expr, pv[0], pv[1], pv[2], xmin, xmax, tmax, nic); }
-  catch(e){ showError("式を解釈できません: "+e); return null; }
+  catch(e){ showError(T("式を解釈できません: ","Cannot parse the expression: ")+e); return null; }
   clearError();
 
   // free the previous model
@@ -549,7 +581,7 @@ function drawPhase(m, animX){
   if(m.zero || m.fps.length>50){
     ctx.fillStyle="#7a828c"; ctx.font="13px sans-serif";
     ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText(m.zero ? "f(x) ≡ 0 — すべての点が固定点（中立）" : "固定点が多数のため非表示",
+    ctx.fillText(m.zero ? T("f(x) ≡ 0 — すべての点が固定点（中立）","f(x) ≡ 0 — every point is a fixed point (neutral)") : T("固定点が多数のため非表示","too many fixed points to display"),
                  (M.l+(w-M.r))/2, (M.t+(h-M.b))/2 - 16);
   } else for(const p of m.fps){
     if(p.x<m.xmin||p.x>m.xmax) continue;
@@ -580,7 +612,7 @@ function drawPhase(m, animX){
   // phase-line note: place it in the corner opposite the f=0 line with a white
   // background so it doesn't overlap the line/arrows
   {
-    const txt="← 相直線（流れの向き）→";  // user-facing label: keep Japanese
+    const txt=T("← 相直線（流れの向き）→","← phase line (flow direction) →");
     ctx.font="11px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="middle";
     const tw=ctx.measureText(txt).width, lx=M.l+6;
     const mid=(M.t + (h-M.b))/2;
@@ -649,7 +681,7 @@ function drawTime(m, animT){
   }
 
   ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
-  ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText("時間 t",w-M.r,h-2);
+  ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText(T("時間 t","time t"),w-M.r,h-2);
   ctx.save(); ctx.translate(13,M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
   ctx.textBaseline="top"; ctx.fillText("x(t)",0,0); ctx.restore();
 }
@@ -658,33 +690,35 @@ function drawTime(m, animT){
 function renderInfo(m){
   const el=$("info");
   if(m.zero){
-    el.innerHTML=`<h3>固定点と安定性</h3>
-      <div class="hint">f(x) ≡ 0：この範囲では f が恒等的に 0 で、<strong>すべての点が固定点</strong>（中立・非双曲）です。系に運動はありません。</div>`;
+    el.innerHTML=`<h3>${T("固定点と安定性","Fixed points and stability")}</h3>
+      <div class="hint">${T("f(x) ≡ 0：この範囲では f が恒等的に 0 で、<strong>すべての点が固定点</strong>（中立・非双曲）です。系に運動はありません。","f(x) ≡ 0: on this range f is identically zero, so <strong>every point is a fixed point</strong> (neutral, non-hyperbolic). The system has no motion.")}</div>`;
     return;
   }
   const list = m.fpsExt && m.fpsExt.length ? m.fpsExt : m.fps.map(p=>({...p,inRange:true}));
   let rows=list.map(p=>{
-    const tag = p.kind===0?`<span class="tag st">安定</span>`
-              : p.kind===1?`<span class="tag un">不安定</span>`
-              : `<span class="tag semi">半安定</span>`;
+    const tag = p.kind===0?`<span class="tag st">${T("安定","stable")}</span>`
+              : p.kind===1?`<span class="tag un">${T("不安定","unstable")}</span>`
+              : `<span class="tag semi">${T("半安定","semi-stable")}</span>`;
     const oor = p.inRange===false;
-    const note = oor ? ` <span style="color:#aab1ba;font-size:11px">範囲外</span>` : "";
+    const note = oor ? ` <span style="color:#aab1ba;font-size:11px">${T("範囲外","out of range")}</span>` : "";
     return `<tr${oor?' style="opacity:.55"':''}><td><code>x* = ${fmt(p.x)}</code>${note}</td><td>${tag}</td>
             <td>f′(x*) = ${p.slope.toFixed(3)}</td></tr>`;
   }).join("");
   if(!list.length) rows=`<tr><td colspan="3" style="color:#8a93a0">
-      固定点はありません（流れは一方向）。</td></tr>`;
+      ${T("固定点はありません（流れは一方向）。","No fixed points (the flow is one-directional).")}</td></tr>`;
   const inN = list.filter(p=>p.inRange!==false).length;
   const cnt={st:0,un:0,semi:0};
   list.forEach(p=> cnt[p.kind===0?"st":p.kind===1?"un":"semi"]++);
   const shown=PNAMES.map((nm,i)=> m.used[i]?`${nm} = ${m.params[i].toFixed(2)}`:null).filter(Boolean);
-  const rtxt = shown.length ? `（現在 ${shown.join(", ")}）` : "";
-  const range = list.length>inN ? `（範囲内 ${inN} / 表示 ${list.length}${list.length>=100?"＝上限":""}）` : `（${list.length} 個）`;
-  el.innerHTML=`<h3>固定点と安定性 ${rtxt}</h3>
-    <table><thead><tr><th>位置</th><th>種類</th><th>線形化</th></tr></thead>
+  const rtxt = shown.length ? T(`（現在 ${shown.join(", ")}）`,`(now ${shown.join(", ")})`) : "";
+  const range = list.length>inN
+    ? T(`（範囲内 ${inN} / 表示 ${list.length}${list.length>=100?"＝上限":""}）`,`(${inN} in range / ${list.length} shown${list.length>=100?", max":""})`)
+    : T(`（${list.length} 個）`,`(${list.length})`);
+  el.innerHTML=`<h3>${T("固定点と安定性","Fixed points and stability")} ${rtxt}</h3>
+    <table><thead><tr><th>${T("位置","Position")}</th><th>${T("種類","Type")}</th><th>${T("線形化","Linearization")}</th></tr></thead>
     <tbody>${rows}</tbody></table>
-    <div class="hint">${range} 安定 ${cnt.st} / 不安定 ${cnt.un}${cnt.semi?` / 半安定 ${cnt.semi}`:""}。
-    グラフには範囲内のみ描画。安定固定点は近くの初期値を引き寄せ、不安定固定点は分水嶺になります。</div>`;
+    <div class="hint">${range} ${T("安定","stable")} ${cnt.st} / ${T("不安定","unstable")} ${cnt.un}${cnt.semi?` / ${T("半安定","semi-stable")} ${cnt.semi}`:""}。
+    ${T("グラフには範囲内のみ描画。安定固定点は近くの初期値を引き寄せ、不安定固定点は分水嶺になります。","Only in-range points are drawn on the graph. Stable fixed points attract nearby initial conditions; unstable ones act as watersheds.")}</div>`;
 }
 
 /* ====== Bifurcation diagram (when parameters exist) ====== */
@@ -716,7 +750,7 @@ function drawBif(m, idx){
     // no isolated fixed points across the sweep (e.g. f ≡ 0 / degenerate)
     ctx.fillStyle="#8a93a0"; ctx.font="13px sans-serif";
     ctx.textAlign="center"; ctx.textBaseline="middle";
-    ctx.fillText("この範囲では固定点が定まりません（f ≡ 0 など退化）", (M.l+w-M.r)/2, (M.t+h-M.b)/2);
+    ctx.fillText(T("この範囲では固定点が定まりません（f ≡ 0 など退化）","No well-defined fixed points on this range (e.g. f ≡ 0 / degenerate)"), (M.l+w-M.r)/2, (M.t+h-M.b)/2);
   }
   const cols=[];
   for(let i=0;i<data.length;i+=3){
@@ -780,9 +814,9 @@ function drawBif(m, idx){
   // labels
   ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
   ctx.textAlign="center"; ctx.textBaseline="bottom";
-  ctx.fillText("パラメータ "+PNAMES[idx], (M.l+w-M.r)/2, h-2);
+  ctx.fillText(T("パラメータ ","parameter ")+PNAMES[idx], (M.l+w-M.r)/2, h-2);
   ctx.save(); ctx.translate(13,M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
-  ctx.textBaseline="top"; ctx.textAlign="center"; ctx.fillText("固定点 x*",0,0); ctx.restore();
+  ctx.textBaseline="top"; ctx.textAlign="center"; ctx.fillText(T("固定点 x*","fixed point x*"),0,0); ctx.restore();
 }
 function bifIndex(m){
   const usedIdx=[0,1,2].filter(i=>m.used[i]);
@@ -830,12 +864,12 @@ function scheduleRender(){
 }
 function stopAnim(){
   anim.on=false; cancelAnimationFrame(anim.raf);
-  $("play").textContent="▶ アニメーション再生";
+  $("play").textContent=T("▶ アニメーション再生","▶ Play animation");
 }
 function startAnim(){
   if(!MODEL) return;
   anim.on=true; anim.t=0; anim.last=performance.now();
-  $("play").textContent="❚❚ 一時停止";
+  $("play").textContent=T("❚❚ 一時停止","❚❚ Pause");
   const step=(now)=>{
     if(!anim.on) return;
     const speed=parseFloat($("speed").value);
@@ -877,10 +911,14 @@ window.addEventListener("resize",()=>{
   }
 });
 
+/* ====== Re-render 1D when the language toggles or its tab is shown ====== */
+window.addEventListener("langchange", ()=>{ if(WASM_READY && MODEL && !$("view-1d").hidden) render(); });
+window.addEventListener("viewshown", e=>{ if(e.detail==="view-1d" && WASM_READY && MODEL) render(); });
+
 /* ====== WASM initialization ====== */
 init()
   .then(()=>{ WASM_READY=true; render(); })
-  .catch(e=>showError("WASM の初期化に失敗しました: "+e));
+  .catch(e=>showError(T("WASM の初期化に失敗しました: ","Failed to initialize WASM: ")+e));
 </script>
 
 <!-- ====== 2D phase-plane visualizer (self-contained; does not touch the 1D code) ====== -->
@@ -888,6 +926,7 @@ init()
 (function(){
   "use strict";
   const $ = id => document.getElementById(id);
+  const T = (ja, en) => window.i18n.t(ja, en);   // i18n shorthand
 
   /* ---- tab switching ---- */
   let drawn2 = false, drawn3 = false;
@@ -900,7 +939,14 @@ init()
       $("view-3d").hidden = v!=="view-3d";
       if(v==="view-2d"){ draw2D(); drawn2=true; } else { stopAnim2(); }   // canvas needs to be visible to size
       if(v==="view-3d"){ compute3(); drawn3=true; } else { stopAnim3(); }
+      window.dispatchEvent(new CustomEvent("viewshown",{detail:v}));   // let the 1D module re-render itself
     });
+  });
+
+  /* ---- re-render the active 2D/3D view when the language toggles ---- */
+  window.addEventListener("langchange",()=>{
+    if(!$("view-2d").hidden) draw2D();
+    if(!$("view-3d").hidden){ stopAnim3(); if(S3) render3(); }
   });
 
   /* ---- mini expression parser for h(x, y) ---- */
@@ -925,7 +971,7 @@ init()
       if(isa(c)){ let j=i+1; while(j<n&&/[a-zA-Z0-9_]/.test(s[j]))j++; const nm=s.slice(i,j).toLowerCase(); i=j;
         toks.push((nm in F1)?{t:"f1",v:nm}:(nm in F2)?{t:"f2",v:nm}:{t:"name",v:nm}); continue; }
       if("+-*/^(),".includes(c)){ toks.push({t:c}); i++; continue; }
-      throw new Error("認識できない文字: '"+c+"'");
+      throw new Error(T("認識できない文字: '","Unrecognized character: '")+c+"'");
     }
     // implicit multiplication
     const ve=t=>t&&(t.t==="num"||t.t==="name"||t.t===")");
@@ -940,7 +986,7 @@ init()
         if(t.v==="x") out.push({t:"x"});
         else if(t.v==="y") out.push({t:"y"});
         else if(t.v in CONST) out.push({t:"num",v:CONST[t.v]});
-        else throw new Error("未知の変数: '"+t.v+"' (使えるのは x, y, pi, e)");
+        else throw new Error(T("未知の変数: '","Unknown variable: '")+t.v+T("' (使えるのは x, y, pi, e)","' (allowed: x, y, pi, e)"));
         prev=true;
       }
       else if(t.t==="f1"||t.t==="f2"){ op.push(t); prev=false; }
@@ -955,11 +1001,11 @@ init()
       }
       else if(t.t==="("){ op.push(t); prev=false; }
       else if(t.t===")"){ while(op.length&&op[op.length-1].t!=="(") out.push(op.pop());
-        if(!op.length) throw new Error("括弧が対応していません"); op.pop();
+        if(!op.length) throw new Error(T("括弧が対応していません","Mismatched parentheses")); op.pop();
         if(op.length&&(op[op.length-1].t==="f1"||op[op.length-1].t==="f2")) out.push(op.pop()); prev=true; }
     }
-    while(op.length){ const o=op.pop(); if(o.t==="(") throw new Error("括弧が対応していません"); out.push(o); }
-    if(!out.length) throw new Error("式が空です");
+    while(op.length){ const o=op.pop(); if(o.t==="(") throw new Error(T("括弧が対応していません","Mismatched parentheses")); out.push(o); }
+    if(!out.length) throw new Error(T("式が空です","Expression is empty"));
     const fn=(x,y)=>{ const st=[]; let sp=0;
       for(const o of out){ switch(o.t){
         case "num": st[sp++]=o.v; break;
@@ -1043,9 +1089,15 @@ init()
     else { ev=`${((T+Math.sqrt(disc))/2).toFixed(2)}, ${((T-Math.sqrt(disc))/2).toFixed(2)}`; }
     return {kind,ev};
   }
-  const KIND_JP={"stable-node":"安定ノード","unstable-node":"不安定ノード",
-    "stable-spiral":"安定渦状点","unstable-spiral":"不安定渦状点","saddle":"サドル","center":"中心",
-    "degenerate":"退化（非双曲）"};
+  const kindLabel = k => ({
+    "stable-node":   T("安定ノード","stable node"),
+    "unstable-node": T("不安定ノード","unstable node"),
+    "stable-spiral": T("安定渦状点","stable spiral"),
+    "unstable-spiral":T("不安定渦状点","unstable spiral"),
+    "saddle":        T("サドル","saddle"),
+    "center":        T("中心","center"),
+    "degenerate":    T("退化（非双曲）","degenerate (non-hyperbolic)"),
+  })[k];
 
   /* ---- 2D rendering ---- */
   function err2(msg){ const e=$("error2"); if(msg){e.textContent=msg;e.classList.add("on");}else e.classList.remove("on"); }
@@ -1059,10 +1111,10 @@ init()
     try{
       const f=compile($("eqf").value.trim()), g=compile($("eqg").value.trim());
       F=(x,y)=>[f(x,y),g(x,y)];
-    }catch(e){ err2("式を解釈できません: "+e.message); return; }
+    }catch(e){ err2(T("式を解釈できません: ","Cannot parse the expression: ")+e.message); return; }
     const xmin=parseFloat($("x2min").value), xmax=parseFloat($("x2max").value);
     const ymin=parseFloat($("y2min").value), ymax=parseFloat($("y2max").value);
-    if(!(xmax>xmin&&ymax>ymin)){ err2("範囲が不正です (min < max)."); return; }
+    if(!(xmax>xmin&&ymax>ymin)){ err2(T("範囲が不正です (min < max).","Invalid range (min < max).")); return; }
     err2(null);
 
     const {ctx,w,h}=setupCanvas($("phase2"), 560);
@@ -1172,14 +1224,13 @@ init()
     if(fAbsMax<1e-12){
       ctx.fillStyle="#7a828c"; ctx.font="13px sans-serif";
       ctx.textAlign="center"; ctx.textBaseline="middle";
-      ctx.fillText("ベクトル場 ≡ 0 — 全平面が固定点（中立・非双曲）", M.l+(w-M.l-M.r)/2, M.t+(h-M.t-M.b)/2);
+      ctx.fillText(T("ベクトル場 ≡ 0 — 全平面が固定点（中立・非双曲）","Vector field ≡ 0 — the whole plane is fixed points (neutral, non-hyperbolic)"), M.l+(w-M.l-M.r)/2, M.t+(h-M.t-M.b)/2);
       ctx.fillStyle="#55606b"; ctx.font="12px sans-serif";
       ctx.textAlign="center"; ctx.textBaseline="bottom"; ctx.fillText("x", w-M.r, h-2);
       ctx.save(); ctx.translate(13, M.t+(h-M.t-M.b)/2); ctx.rotate(-Math.PI/2);
       ctx.textBaseline="top"; ctx.fillText("y",0,0); ctx.restore();
-      $("info2").innerHTML = `<h3>固定点と分類</h3>
-        <p style="color:#55606b">ベクトル場が恒等的に 0 です。すべての点が固定点で、どこにも流れがありません
-        （中立・非双曲）。特定の平衡点を「安定／不安定」と分類することはできません。</p>`;
+      $("info2").innerHTML = `<h3>${T("固定点と分類","Fixed points and classification")}</h3>
+        <p style="color:#55606b">${T("ベクトル場が恒等的に 0 です。すべての点が固定点で、どこにも流れがありません（中立・非双曲）。特定の平衡点を「安定／不安定」と分類することはできません。","The vector field is identically zero. Every point is a fixed point and there is no flow anywhere (neutral, non-hyperbolic). No particular equilibrium can be classified as stable or unstable.")}</p>`;
       return {F,X,Y,w,h,M,xmin,xmax,ymin,ymax,dt,cv:$("phase2")};
     }
     const fps=[]; const tol=diag*0.02; const ns=10;
@@ -1220,20 +1271,20 @@ init()
     const rows = info.length ? info.map(p=>{
       const c = p.kind==="saddle"?C.saddle:p.kind==="center"?C.center:p.kind==="degenerate"?C.degenerate:p.kind.startsWith("stable")?C.stable:C.unstable;
       return `<tr><td><code>(${fmt(p.px)}, ${fmt(p.py)})</code></td>
-        <td style="color:${c};font-weight:600">${KIND_JP[p.kind]}</td>
+        <td style="color:${c};font-weight:600">${kindLabel(p.kind)}</td>
         <td>λ = ${p.ev}</td></tr>`;
-    }).join("") : `<tr><td colspan="3" style="color:#8a93a0">この範囲に固定点はありません。</td></tr>`;
-    $("info2").innerHTML = `<h3>固定点と分類 (${info.length} 個)</h3>
-      <table><thead><tr><th>位置 (x*, y*)</th><th>種類</th><th>固有値</th></tr></thead>
+    }).join("") : `<tr><td colspan="3" style="color:#8a93a0">${T("この範囲に固定点はありません。","No fixed points in this range.")}</td></tr>`;
+    $("info2").innerHTML = `<h3>${T("固定点と分類","Fixed points and classification")} ${T(`(${info.length} 個)`,`(${info.length})`)}</h3>
+      <table><thead><tr><th>${T("位置 (x*, y*)","Position (x*, y*)")}</th><th>${T("種類","Type")}</th><th>${T("固有値","Eigenvalues")}</th></tr></thead>
       <tbody>${rows}</tbody></table>
-      <div class="hint">ヤコビアンの固有値 λ で分類: 実部の符号が安定性、虚部があれば渦状（回転）。</div>`;
+      <div class="hint">${T("ヤコビアンの固有値 λ で分類: 実部の符号が安定性、虚部があれば渦状（回転）。","Classified by the Jacobian eigenvalues λ: the sign of the real part gives stability; a nonzero imaginary part means spiral (rotation).")}</div>`;
     return {F,X,Y,w,h,M,xmin,xmax,ymin,ymax,dt,cv:$("phase2")};
   }
 
   /* ---- 2D animation: particles flowing along the field over a fixed background ---- */
   const anim2={on:false,raf:0,last:0,parts:[],geom:null,bg:null};
   function stopAnim2(){ anim2.on=false; cancelAnimationFrame(anim2.raf);
-    const b=$("play2"); if(b) b.textContent="▶ アニメーション再生"; }
+    const b=$("play2"); if(b) b.textContent=T("▶ アニメーション再生","▶ Play animation"); }
   function snapshot(cv){ const b=document.createElement("canvas");
     b.width=cv.width; b.height=cv.height; b.getContext("2d").drawImage(cv,0,0); return b; }
   function respawn2(g,p){ p.x=g.xmin+Math.random()*(g.xmax-g.xmin);
@@ -1247,7 +1298,7 @@ init()
         col:viridis((i*ns+j)/(ns*ns-1)), hist:[], age:0, life:180+Math.random()*260 });
     }
     anim2.on=true; anim2.last=performance.now();
-    $("play2").textContent="❚❚ 一時停止";
+    $("play2").textContent=T("❚❚ 一時停止","❚❚ Pause");
     anim2.raf=requestAnimationFrame(step2);
   }
   function step2(now){
@@ -1316,7 +1367,7 @@ init()
       if(isa(c)){ let j=i+1; while(j<n&&/[a-zA-Z0-9_]/.test(s[j]))j++; const nm=s.slice(i,j).toLowerCase(); i=j;
         toks.push((nm in F1)?{t:"f1",v:nm}:(nm in F2)?{t:"f2",v:nm}:{t:"name",v:nm}); continue; }
       if("+-*/^(),".includes(c)){ toks.push({t:c}); i++; continue; }
-      throw new Error("認識できない文字: '"+c+"'");
+      throw new Error(T("認識できない文字: '","Unrecognized character: '")+c+"'");
     }
     const ve=t=>t&&(t.t==="num"||t.t==="name"||t.t===")");
     const vs=t=>t&&(t.t==="num"||t.t==="name"||t.t==="f1"||t.t==="f2"||t.t==="(");
@@ -1330,7 +1381,7 @@ init()
         else if(t.v==="y") out.push({t:"y"});
         else if(t.v==="z") out.push({t:"z"});
         else if(t.v in CONST) out.push({t:"num",v:CONST[t.v]});
-        else throw new Error("未知の変数: '"+t.v+"' (使えるのは x, y, z, pi, e)");
+        else throw new Error(T("未知の変数: '","Unknown variable: '")+t.v+T("' (使えるのは x, y, z, pi, e)","' (allowed: x, y, z, pi, e)"));
         prev=true;
       }
       else if(t.t==="f1"||t.t==="f2"){ op.push(t); prev=false; }
@@ -1345,11 +1396,11 @@ init()
       }
       else if(t.t==="("){ op.push(t); prev=false; }
       else if(t.t===")"){ while(op.length&&op[op.length-1].t!=="(") out.push(op.pop());
-        if(!op.length) throw new Error("括弧が対応していません"); op.pop();
+        if(!op.length) throw new Error(T("括弧が対応していません","Mismatched parentheses")); op.pop();
         if(op.length&&(op[op.length-1].t==="f1"||op[op.length-1].t==="f2")) out.push(op.pop()); prev=true; }
     }
-    while(op.length){ const o=op.pop(); if(o.t==="(") throw new Error("括弧が対応していません"); out.push(o); }
-    if(!out.length) throw new Error("式が空です");
+    while(op.length){ const o=op.pop(); if(o.t==="(") throw new Error(T("括弧が対応していません","Mismatched parentheses")); out.push(o); }
+    if(!out.length) throw new Error(T("式が空です","Expression is empty"));
     const fn=(x,y,z)=>{ const st=[]; let sp=0;
       for(const o of out){ switch(o.t){
         case "num": st[sp++]=o.v; break;
@@ -1437,14 +1488,23 @@ init()
     const mnr=(J[1][1]*J[2][2]-J[1][2]*J[2][1])+(J[0][0]*J[2][2]-J[0][2]*J[2][0])+(J[0][0]*J[1][1]-J[0][1]*J[1][0]);
     const eig=cubicRoots(-tr, mnr, -det3(J)); // char. poly λ³ - tr λ² + (Σminor) λ - det
     const ev=evString(eig);
-    if(jscale<1e-7) return {kind:"degenerate",label:"退化（非双曲）",ev};
+    if(jscale<1e-7) return {kind:"degenerate",spiral:false,ev};
     const eps=1e-6*jscale; let nPos=0,nNeg=0,nZero=0,hasC=false;
     for(const e of eig){ if(Math.abs(e.im)>eps) hasC=true;
       if(e.re>eps) nPos++; else if(e.re<-eps) nNeg++; else nZero++; }
-    if(nZero>0) return {kind:"degenerate",label:"退化（非双曲）",ev};         // zero real part: non-hyperbolic
-    if(nNeg===3) return {kind:"stable",  label:hasC?"安定（渦状）":"安定（沈点）",ev};
-    if(nPos===3) return {kind:"unstable",label:hasC?"不安定（渦状）":"不安定（源点）",ev};
-    return {kind:"saddle", label:hasC?"サドル（渦状）":"サドル",ev};            // mixed signs
+    if(nZero>0) return {kind:"degenerate",spiral:false,ev};         // zero real part: non-hyperbolic
+    if(nNeg===3) return {kind:"stable",  spiral:hasC,ev};
+    if(nPos===3) return {kind:"unstable",spiral:hasC,ev};
+    return {kind:"saddle", spiral:hasC,ev};                          // mixed signs
+  }
+  // localized fixed-point label, built at render time so it follows the language toggle
+  function kindLabel3(kind, spiral){
+    switch(kind){
+      case "stable":   return spiral?T("安定（渦状）","stable (spiral)"):T("安定（沈点）","stable (sink)");
+      case "unstable": return spiral?T("不安定（渦状）","unstable (spiral)"):T("不安定（源点）","unstable (source)");
+      case "saddle":   return spiral?T("サドル（渦状）","saddle (spiral)"):T("サドル","saddle");
+      default:         return T("退化（非双曲）","degenerate (non-hyperbolic)");
+    }
   }
 
   /* ---- 3D camera / projection ---- */
@@ -1505,14 +1565,13 @@ init()
     const rows = fps.length ? fps.map(f=>{
       const c = f.kind==="saddle"?C.saddle:f.kind==="degenerate"?C.degenerate:f.kind==="stable"?C.stable:C.unstable;
       return `<tr><td><code>(${fmt(f.p[0])}, ${fmt(f.p[1])}, ${fmt(f.p[2])})</code></td>
-        <td style="color:${c};font-weight:600">${f.label}</td>
+        <td style="color:${c};font-weight:600">${kindLabel3(f.kind, f.spiral)}</td>
         <td>λ = ${f.ev}</td></tr>`;
-    }).join("") : `<tr><td colspan="3" style="color:#8a93a0">この範囲に固定点はありません。</td></tr>`;
-    $("info3").innerHTML = `<h3>固定点と分類 (${fps.length} 個)</h3>
-      <table><thead><tr><th>位置 (x*, y*, z*)</th><th>種類</th><th>固有値</th></tr></thead>
+    }).join("") : `<tr><td colspan="3" style="color:#8a93a0">${T("この範囲に固定点はありません。","No fixed points in this range.")}</td></tr>`;
+    $("info3").innerHTML = `<h3>${T("固定点と分類","Fixed points and classification")} ${T(`(${fps.length} 個)`,`(${fps.length})`)}</h3>
+      <table><thead><tr><th>${T("位置 (x*, y*, z*)","Position (x*, y*, z*)")}</th><th>${T("種類","Type")}</th><th>${T("固有値","Eigenvalues")}</th></tr></thead>
       <tbody>${rows}</tbody></table>
-      <div class="hint">3×3 ヤコビアンの固有値 λ で分類: 実部の符号が安定性、虚部があれば回転（渦状）。
-      符号が混在すればサドル、実部 0 を含むと退化（非双曲）。</div>`;
+      <div class="hint">${T("3×3 ヤコビアンの固有値 λ で分類: 実部の符号が安定性、虚部があれば回転（渦状）。符号が混在すればサドル、実部 0 を含むと退化（非双曲）。","Classified by the 3×3 Jacobian eigenvalues λ: the sign of the real part gives stability, a nonzero imaginary part means rotation (spiral). Mixed signs are a saddle; a zero real part is degenerate (non-hyperbolic).")}</div>`;
   }
 
   // Parse equations + ranges, integrate trajectories, find/classify fixed points. Heavy work happens here once.
@@ -1522,11 +1581,11 @@ init()
     try{
       const f=compile3($("eq3x").value.trim()), g=compile3($("eq3y").value.trim()), hh=compile3($("eq3z").value.trim());
       F=(x,y,z)=>[f(x,y,z),g(x,y,z),hh(x,y,z)];
-    }catch(e){ err3("式を解釈できません: "+e.message); return null; }
+    }catch(e){ err3(T("式を解釈できません: ","Cannot parse the expression: ")+e.message); return null; }
     const xmin=parseFloat($("x3min").value), xmax=parseFloat($("x3max").value);
     const ymin=parseFloat($("y3min").value), ymax=parseFloat($("y3max").value);
     const zmin=parseFloat($("z3min").value), zmax=parseFloat($("z3max").value);
-    if(!(xmax>xmin&&ymax>ymin&&zmax>zmin)){ err3("範囲が不正です (min < max)."); return null; }
+    if(!(xmax>xmin&&ymax>ymin&&zmax>zmin)){ err3(T("範囲が不正です (min < max).","Invalid range (min < max).")); return null; }
     err3(null);
     const ranges={xmin,xmax,ymin,ymax,zmin,zmax};
     const cx=(xmin+xmax)/2, cy=(ymin+ymax)/2, cz=(zmin+zmax)/2;
@@ -1565,7 +1624,7 @@ init()
       if(r[0]<xmin-pad||r[0]>xmax+pad||r[1]<ymin-pad||r[1]>ymax+pad||r[2]<zmin-pad||r[2]>zmax+pad) continue;
       if(fps.some(q=>Math.hypot(q.p[0]-r[0],q.p[1]-r[1],q.p[2]-r[2])<tol)) continue;
       const c=classify3(F,r[0],r[1],r[2]);
-      fps.push({p:r, kind:c.kind, label:c.label, ev:c.ev});
+      fps.push({p:r, kind:c.kind, spiral:c.spiral, ev:c.ev});
     }
     S3={F, ranges, cx,cy,cz, hx,hy,hz, traj, tcol, fps};
     render3();
@@ -1615,14 +1674,14 @@ init()
   /* ---- 3D animation: a marker travels along each *initial* trajectory (same path & colour) ---- */
   const anim3={on:false,raf:0,last:0,parts:[],geom:null,bg:null};
   function stopAnim3(){ anim3.on=false; cancelAnimationFrame(anim3.raf);
-    const b=$("play3"); if(b) b.textContent="▶ アニメーション再生"; }
+    const b=$("play3"); if(b) b.textContent=T("▶ アニメーション再生","▶ Play animation"); }
   function startAnim3(){
     if(!S3 && !compute3()) return;
     const g=render3({dim:true}); if(!g) return;   // backdrop = box + fixed points + faint initial trajectories
     anim3.geom=g; anim3.bg=snapshot(g.cv);
     // one moving marker per initial trajectory, travelling along that exact stored path
     anim3.parts=S3.traj.map((pts,k)=>({k, t:Math.random()*Math.max(1,pts.length-1), col:S3.tcol[k]}));
-    anim3.on=true; anim3.last=performance.now(); $("play3").textContent="❚❚ 一時停止";
+    anim3.on=true; anim3.last=performance.now(); $("play3").textContent=T("❚❚ 一時停止","❚❚ Pause");
     anim3.raf=requestAnimationFrame(step3);
   }
   function step3(now){

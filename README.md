@@ -1,127 +1,130 @@
-# 力学系ビジュアライザ（1 次元・2 次元・3 次元 / Rust + WebAssembly）
+# Dynamical Systems Visualizer (1D / 2D / 3D — Rust + WebAssembly)
 
-ページは[こちら](https://kaaatsu32329.github.io/dynamics/)から。
+[日本語版はこちら / Japanese version](README_JP.md)
 
-自励系の挙動をブラウザで可視化するワークスペース。ページ上部のタブで **1 次元** / **2 次元** / **3 次元** を切り替えられる。
+The page is available [here](https://kaaatsu32329.github.io/dynamics/).
 
-**1 次元 `dx/dt = f(x)`** — 任意の関数 `f(x)` を文字列で与えると、
-**f(x) のグラフ・相直線（流れの向き）・固定点の安定性・時系列 x(t)** を描画する。
-解の挙動はすべて相直線上で理解できる:
+A workspace for visualizing the behavior of autonomous systems in the browser. Use the tabs at the top of the page to switch between **1D** / **2D** / **3D**.
 
-- `f(x) = 0` の点が **固定点**（平衡点）。
-- `f(x) > 0` の区間では x は増加（→）、`f(x) < 0` では減少（←）。
-- 固定点での傾きが安定性を決める: `f'(x*) < 0` なら **安定**（●）、`f'(x*) > 0` なら **不安定**（○）。
+**1D `dx/dt = f(x)`** — Given any function `f(x)` as a string, it draws
+**the graph of f(x), the phase line (direction of flow), the stability of fixed points, and the time series x(t)**.
+The behavior of solutions can be understood entirely on the phase line:
 
-**2 次元 `dx/dt = f(x,y), dy/dt = g(x,y)`** — 相平面に
-**ベクトル場・ヌルクライン（f=0 / g=0）・固定点（ヤコビアンの固有値で分類）・軌道** を描画し、
-粒子が流れに沿って動くアニメーションも再生できる。
+- Points where `f(x) = 0` are **fixed points** (equilibria).
+- On intervals where `f(x) > 0`, x increases (→); where `f(x) < 0`, it decreases (←).
+- The slope at a fixed point determines stability: `f'(x*) < 0` is **stable** (●), `f'(x*) > 0` is **unstable** (○).
 
-**3 次元 `dx/dt = f(x,y,z), dy/dt = g(x,y,z), dz/dt = h(x,y,z)`** — 相空間に
-**軌道（数値積分）・固定点（3×3 ヤコビアンの固有値で分類）** を描画する。
-ドラッグで視点を回転でき、粒子が流れるアニメーションも再生できる（例: Lorenz・Rössler・Chen・Thomas・Halvorsen）。
+**2D `dx/dt = f(x,y), dy/dt = g(x,y)`** — On the phase plane it draws
+**the vector field, nullclines (f=0 / g=0), fixed points (classified by the eigenvalues of the Jacobian), and trajectories**,
+and can also play an animation of particles flowing along the field.
+
+**3D `dx/dt = f(x,y,z), dy/dt = g(x,y,z), dz/dt = h(x,y,z)`** — In phase space it draws
+**trajectories (numerically integrated) and fixed points (classified by the eigenvalues of the 3×3 Jacobian)**.
+You can rotate the viewpoint by dragging, and play an animation of particles flowing (examples: Lorenz, Rössler, Chen, Thomas, Halvorsen).
 
 ![bistable](gallery/bistable.png)
 
-## ワークスペース構成
+## Workspace layout
 
-| クレート | 種別 | 役割 | 依存 |
-|----------|------|------|------|
-| [`dyn-core`](crates/dyn-core) | lib | 数式パーサ・固定点検出・安定性判定・RK4 積分 | **依存ゼロ** |
-| [`dyn-wasm`](crates/dyn-wasm) | cdylib | `dyn-core` を WebAssembly に公開（**ブラウザ版の計算エンジン**） | `wasm-bindgen` |
-| [`dyn-cli`](crates/dyn-cli)   | bin | 方程式 → PNG / アニメーション GIF | `plotters` |
+| Crate | Kind | Role | Dependencies |
+|-------|------|------|--------------|
+| [`dyn-core`](crates/dyn-core) | lib | Expression parser, fixed-point detection, stability classification, RK4 integration | **zero deps** |
+| [`dyn-wasm`](crates/dyn-wasm) | cdylib | Exposes `dyn-core` to WebAssembly (**the compute engine for the browser version**) | `wasm-bindgen` |
+| [`dyn-cli`](crates/dyn-cli)   | bin | Equation → PNG / animated GIF | `plotters` |
 
-`dyn-core` は標準ライブラリのみに依存し、`no_std` 化や組込み用途への転用も視野に入る薄い数値コア。
-**1 次元**のブラウザ版・CLI はいずれもこの同じコアを消費する薄い presentation 層で、
-数式パース・固定点検出・RK4 積分という本質ロジックは Rust(WASM) が実行し、描画（canvas）と UI のみが JavaScript。
+`dyn-core` depends only on the standard library — a thin numeric core that even has `no_std` use / embedded repurposing in view.
+The **1D** browser version and the CLI are both thin presentation layers consuming this same core; the essential logic
+(expression parsing, fixed-point detection, RK4 integration) runs in Rust (WASM), and only the rendering (canvas) and UI are JavaScript.
 
-**2 次元・3 次元タブ**はブラウザ内の自己完結 JavaScript（独自パーサ＋RK4＋ヤコビアンによる固定点分類、
-3 次元は固有値を解く 3×3 ヤコビアンと回転投影つき）で実装しており、Rust クレートには依存しない（`web/index.html` 内）。
+The **2D and 3D tabs** are implemented as self-contained in-browser JavaScript (their own parser + RK4 + Jacobian-based
+fixed-point classification; the 3D one adds a 3×3 Jacobian eigenvalue solver and a rotating projection) and do not depend on
+the Rust crates (inside `web/index.html`).
 
-## 使い方
+## Usage
 
-### ブラウザ版（推奨）
+### Browser version (recommended)
 
 ```sh
 ./run.sh
 ```
 
-これ一つで完結する:
+This single command does everything:
 
-1. wasm ターゲットと `wasm-bindgen-cli`（`Cargo.lock` と同版）が無ければ自動インストール
-2. 未ビルド / ソースが更新されていれば WebAssembly を再ビルド
-3. ローカル HTTP サーバを起動し、**既定ブラウザでページを開く**（Ctrl-C で停止＆後始末）
+1. Auto-installs the wasm target and `wasm-bindgen-cli` (same version as `Cargo.lock`) if missing
+2. Rebuilds the WebAssembly if it hasn't been built / the source has changed
+3. Starts a local HTTP server and **opens the page in your default browser** (Ctrl-C to stop and clean up)
 
-ポートは自動選択（`./run.sh 8080` で指定可）。方程式を入力（または例ボタン）すると即座に
-再描画。パラメータ `p` `q` `r` を含む式（例 `r - x^2`、`r*x*(1 - x/q)`、`p + r*x - x^3`）では
-含むものだけスライダーが専用行に現れ、分岐（固定点の生成・消滅）を動かして観察できる。
-パラメータを含む式では **分岐図**（固定点 x* を掃引パラメータに対して描き、安定＝緑/不安定＝赤、
-現在値を縦線で表示）も自動で表示される（複数パラメータ時は掃引対象を選択可）。
-`▶ アニメーション再生` で粒子が相直線上を流れ安定固定点へ収束する
-様子を表示。計算（パース・固定点・積分）はすべて Rust(WASM)、描画は canvas。
+The port is chosen automatically (specify with `./run.sh 8080`). Entering an equation (or clicking an example button) redraws
+immediately. For expressions containing the parameters `p` `q` `r` (e.g. `r - x^2`, `r*x*(1 - x/q)`, `p + r*x - x^3`),
+only the parameters that appear get a slider on a dedicated row, and you can move them to observe bifurcations
+(creation/annihilation of fixed points). For expressions with parameters, a **bifurcation diagram** is also shown automatically
+(plotting the fixed points x* against the swept parameter — stable = green / unstable = red, with the current value drawn as a
+vertical line; when there are multiple parameters you can choose which one to sweep).
+`▶ アニメーション再生` shows particles flowing along the phase line and converging to stable fixed points.
+All computation (parsing, fixed points, integration) is done in Rust (WASM); rendering is canvas.
 
-ビルドだけ・配信だけしたい場合は `./build-web.sh`（`--serve` で 8000 番配信）。
+If you only want to build / serve, use `./build-web.sh` (`--serve` serves on port 8000).
 
-> `file://` で直接開くと ES モジュール/WASM の取得が CORS で失敗するため、HTTP 配信が必要。
-> `web/pkg/` は `build-web.sh`（= `cargo build --target wasm32-unknown-unknown` + `wasm-bindgen`）が生成する。
+> Opening directly via `file://` fails because fetching the ES module / WASM is blocked by CORS, so HTTP serving is required.
+> `web/pkg/` is generated by `build-web.sh` (= `cargo build --target wasm32-unknown-unknown` + `wasm-bindgen`).
 
-ページ上部のタブで **1 次元 / 2 次元 / 3 次元** を切り替えられる。2 次元は自励系
-`dx/dt = f(x,y)`, `dy/dt = g(x,y)` の相平面で、ベクトル場・ヌルクライン・固定点
-（ヤコビアンの固有値で分類）・軌道を描画する（例: 減衰振り子・Van der Pol・Lotka-Volterra）。
-3 次元は `dx/dt = f(x,y,z)`, `dy/dt = g(x,y,z)`, `dz/dt = h(x,y,z)` の相空間で、軌道と固定点
-（3×3 ヤコビアンの固有値で分類）を描画し、ドラッグで回転できる（例: Lorenz・Rössler・Chen・Thomas・Halvorsen）。
-2 次元・3 次元側は 1 次元に手を入れずに追加した自己完結 JS。
+Use the tabs at the top of the page to switch between **1D / 2D / 3D**. 2D is the phase plane of the autonomous system
+`dx/dt = f(x,y)`, `dy/dt = g(x,y)`, drawing the vector field, nullclines, fixed points
+(classified by the eigenvalues of the Jacobian), and trajectories (examples: damped pendulum, Van der Pol, Lotka-Volterra).
+3D is the phase space of `dx/dt = f(x,y,z)`, `dy/dt = g(x,y,z)`, `dz/dt = h(x,y,z)`, drawing trajectories and fixed points
+(classified by the eigenvalues of the 3×3 Jacobian), and can be rotated by dragging (examples: Lorenz, Rössler, Chen, Thomas, Halvorsen).
+The 2D and 3D sides are self-contained JS added without touching the 1D code.
 
-### CLI（静止画 / GIF）
+### CLI (still image / GIF)
 
 ```sh
-# 静止画
+# still image
 cargo run -p dyn-cli -- "x - x^3"
 
-# パラメータ付き（サドルノード分岐）
+# with parameters (saddle-node bifurcation)
 cargo run -p dyn-cli -- "r - x^2" --r 1 -o saddle.png
-cargo run -p dyn-cli -- "r*x*(1 - x/q)" --r 1.2 --q 0.8   # 複数パラメータ p/q/r
+cargo run -p dyn-cli -- "r*x*(1 - x/q)" --r 1.2 --q 0.8   # multiple parameters p/q/r
 
-# アニメーション GIF
+# animated GIF
 cargo run -p dyn-cli -- "x*(1-x)" --gif -o logistic.gif --frames 120
 ```
 
-主なオプション: `--xmin/--xmax`（x 範囲）, `--tmax`（積分時間）, `--n`（軌道本数）,
-`--p`/`--q`/`--r`（パラメータ）, `--size WxH`, `--gif`, `--frames`。`-h` で一覧。
+Main options: `--xmin/--xmax` (x range), `--tmax` (integration time), `--n` (number of trajectories),
+`--p`/`--q`/`--r` (parameters), `--size WxH`, `--gif`, `--frames`. Use `-h` for the full list.
 
-## 数式の記法
+## Expression syntax
 
-- 演算: `+ - * /`、べき乗 `^`、括弧、**暗黙の掛け算** `2x` / `x(1-x)`
-- 関数: `sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 log2 sqrt cbrt abs sign floor ceil round pow(a,b) atan2 min max mod`
-- 定数: `pi e tau`、変数: `x`、パラメータ: `p` `q` `r`（式に現れたものだけ調整可能）
+- Operators: `+ - * /`, exponent `^`, parentheses, **implicit multiplication** `2x` / `x(1-x)`
+- Functions: `sin cos tan asin acos atan sinh cosh tanh exp log(=ln) log10 log2 sqrt cbrt abs sign floor ceil round pow(a,b) atan2 min max mod`
+- Constants: `pi e tau`; variable: `x`; parameters: `p` `q` `r` (only those appearing in the expression are adjustable)
 
-2 次元タブの式は変数 `x`, `y`、3 次元タブの式は変数 `x`, `y`, `z`（いずれもパラメータ非対応）。
-演算・関数・定数・暗黙の掛け算は 1 次元と同じ。
+Expressions in the 2D tab use variables `x`, `y`; in the 3D tab `x`, `y`, `z` (neither supports parameters).
+Operators, functions, constants, and implicit multiplication are the same as in 1D.
 
-## テスト
+## Tests
 
 ```sh
 cargo test --workspace
 ```
 
-- `dyn-core`: パーサ（単項マイナス・べき乗の優先順位・暗黙の掛け算・複数パラメータ）、
-  固定点検出、サドルノード分岐、RK4 が解析解 `e^{-t}` に一致、などを検証。
+- `dyn-core`: verifies the parser (unary minus, exponent precedence, implicit multiplication, multiple parameters),
+  fixed-point detection, the saddle-node bifurcation, that RK4 matches the analytic solution `e^{-t}`, and more.
 
-## ギャラリー
+## Gallery
 
 | | |
 |---|---|
-| ロジスティック `x(1-x)` | 双安定 `x - x³` |
-| サドルノード `r - x²` (r=1) | `sin(x)` |
+| Logistic `x(1-x)` | Bistable `x - x³` |
+| Saddle-node `r - x²` (r=1) | `sin(x)` |
 
-`gallery/` 配下に出力例（PNG / GIF）。
+Output examples (PNG / GIF) are under `gallery/`.
 
-## メモ（ツールチェーン）
+## Notes (toolchain)
 
-- stable Rust でビルド可（ローカル開発は nightly でも可）。
-- plotters は既定の `ttf`/font-kit が最新 nightly で壊れる（`pathfinder_simd`）ため、
-  純 Rust の `ab_glyph` フォントバックエンドを使用し、システム TTF を実行時に登録している
-  （`crates/dyn-cli/src/font.rs`）。
-- ブラウザ版は `wasm-bindgen` を使用。`wasm-bindgen` **クレートと CLI のバージョンは一致必須**
-  （本リポジトリは `0.2.125`）。CLI 不要の `trunk`/`wasm-pack` は使わず、`wasm-bindgen` を直接呼ぶ
-  最小構成（`build-web.sh`）。描画と UI を HTML/CSS+canvas にしているのは、日本語表示が
-  そのまま出せて軽量なため（重い計算はすべて Rust/WASM）。
+- Builds on stable Rust (local development can use nightly too).
+- plotters' default `ttf`/font-kit backend breaks on the latest nightly (`pathfinder_simd`), so we use the pure-Rust
+  `ab_glyph` font backend and register a system TTF at runtime (`crates/dyn-cli/src/font.rs`).
+- The browser version uses `wasm-bindgen`. The `wasm-bindgen` **crate and CLI versions must match**
+  (this repo uses `0.2.125`). We don't use `trunk`/`wasm-pack` (which need extra CLIs); instead a minimal setup calls
+  `wasm-bindgen` directly (`build-web.sh`). Rendering and UI are done with HTML/CSS+canvas because Japanese text displays
+  as-is and it's lightweight (all heavy computation is in Rust/WASM).
